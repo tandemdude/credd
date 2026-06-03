@@ -1,0 +1,9 @@
+docs/superpowers/
+test.db
+credd
+!credd/
+creddserver
+!creddserver/
+.idea/
+.DS_Store
+.task/
