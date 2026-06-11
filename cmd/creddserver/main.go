@@ -23,9 +23,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func newOnePasswordClient(opAccountName string) func(ctx context.Context) (*opwd.Client, error) {
-	return func(ctx context.Context) (*opwd.Client, error) {
-		return opwd.NewClient(ctx, opAccountName)
+func newOnePasswordClient(opAccountName string) func(ctx context.Context) (server.SecretResolver, error) {
+	return func(ctx context.Context) (server.SecretResolver, error) {
+		c, err := opwd.NewClient(ctx, opAccountName)
+		if err != nil {
+			return nil, err
+		}
+		return c, nil
 	}
 }
 
@@ -51,7 +55,12 @@ func runServer(ctx context.Context, addr, opAccountName, dbPath string) error {
 
 	store := sqlite.NewStore(q)
 
-	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(server.RecoveryUnaryInterceptor))
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			server.RecoveryUnaryInterceptor,
+			server.LoggingUnaryInterceptor,
+		),
+	)
 	secretsv1.RegisterSecretsServer(grpcServer, server.NewSecretsServer(store.Secrets, newOnePasswordClient(opAccountName)))
 
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)

@@ -24,6 +24,44 @@ func (f *fakeSecretRepo) GetSecret(ctx context.Context, name string) (models.Sec
 	return f.getSecret(ctx, name)
 }
 
+// fakeResolver implements SecretResolver for tests.
+type fakeResolver struct {
+	resolve func(ctx context.Context, reference string) (string, error)
+}
+
+func (f *fakeResolver) ResolveSecret(ctx context.Context, reference string) (string, error) {
+	return f.resolve(ctx, reference)
+}
+
+func TestGetSecretRecreatesClientOnStaleClientError(t *testing.T) {
+	var factoryCalls int
+	factory := func(ctx context.Context) (SecretResolver, error) {
+		factoryCalls++
+		attempt := factoryCalls
+		return &fakeResolver{
+			resolve: func(ctx context.Context, reference string) (string, error) {
+				if attempt == 1 {
+					return "", errors.New("invalid client id")
+				}
+				return "resolved-secret", nil
+			},
+		}, nil
+	}
+
+	srv := NewSecretsServer(&fakeSecretRepo{}, factory)
+
+	resp, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "op://Vault/item/field"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.GetSecret() != "resolved-secret" {
+		t.Fatalf("got %q, want resolved-secret", resp.GetSecret())
+	}
+	if factoryCalls != 2 {
+		t.Fatalf("expected client to be recreated (factory called twice), got %d calls", factoryCalls)
+	}
+}
+
 func TestGetSecretPropagatesRepoError(t *testing.T) {
 	wantErr := errors.New("not found")
 	srv := NewSecretsServer(&fakeSecretRepo{
@@ -51,6 +89,51 @@ func TestGetSecretReturnsValueOnSuccess(t *testing.T) {
 	}
 	if resp.GetSecret() != "s3cret" {
 		t.Fatalf("got %q, want s3cret", resp.GetSecret())
+	}
+}
+
+func TestGetSecretDoesNotRecreateClientOnOtherErrors(t *testing.T) {
+	var factoryCalls int
+	factory := func(ctx context.Context) (SecretResolver, error) {
+		factoryCalls++
+		return &fakeResolver{
+			resolve: func(ctx context.Context, reference string) (string, error) {
+				return "", errors.New("item not found")
+			},
+		}, nil
+	}
+
+	srv := NewSecretsServer(&fakeSecretRepo{}, factory)
+
+	_, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "op://Vault/item/field"})
+	if err == nil {
+		t.Fatal("expected error to propagate")
+	}
+	if factoryCalls != 1 {
+		t.Fatalf("expected no client recreation for non-stale errors, got %d factory calls", factoryCalls)
+	}
+}
+
+func TestGetSecretReturnsErrorWhenClientStaysStale(t *testing.T) {
+	var factoryCalls int
+	factory := func(ctx context.Context) (SecretResolver, error) {
+		factoryCalls++
+		return &fakeResolver{
+			resolve: func(ctx context.Context, reference string) (string, error) {
+				return "", errors.New("invalid client id")
+			},
+		}, nil
+	}
+
+	srv := NewSecretsServer(&fakeSecretRepo{}, factory)
+
+	_, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "op://Vault/item/field"})
+	if err == nil {
+		t.Fatal("expected error when client stays stale")
+	}
+	// One rebuild attempt only: initial client + one recreation.
+	if factoryCalls != 2 {
+		t.Fatalf("expected exactly one recreation attempt, got %d factory calls", factoryCalls)
 	}
 }
 

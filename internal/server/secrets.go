@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/tandemdude/credd/internal/domain/models"
@@ -18,16 +19,24 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type opFactoryFn = func(ctx context.Context) (*opwd.Client, error)
+// SecretResolver resolves a 1Password reference to its secret value. It is
+// satisfied by *opwd.Client and exists so the server can be tested without the
+// 1Password SDK.
+type SecretResolver interface {
+	ResolveSecret(ctx context.Context, reference string) (string, error)
+}
+
+type opFactoryFn = func(ctx context.Context) (SecretResolver, error)
 
 type SecretsServer struct {
 	secretsv1.UnimplementedSecretsServer
 
 	secretRepo repository.SecretRepository
 
-	opFn opFactoryFn
-	opMu sync.Mutex
-	op   *opwd.Client
+	opFn  opFactoryFn
+	opMu  sync.Mutex
+	op    SecretResolver
+	opGen uint64 // bumps each time a new client is built; guards concurrent invalidation
 }
 
 func NewSecretsServer(secretRepo repository.SecretRepository, opFn opFactoryFn) *SecretsServer {
@@ -37,18 +46,63 @@ func NewSecretsServer(secretRepo repository.SecretRepository, opFn opFactoryFn) 
 	}
 }
 
-func (s *SecretsServer) getOp(ctx context.Context) (*opwd.Client, error) {
+func (s *SecretsServer) getOp(ctx context.Context) (SecretResolver, uint64, error) {
 	s.opMu.Lock()
 	defer s.opMu.Unlock()
 
 	if s.op == nil {
 		op, err := s.opFn(ctx)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		s.op = op
+		s.opGen++
 	}
-	return s.op, nil
+	return s.op, s.opGen, nil
+}
+
+// invalidateOp drops the cached client so the next getOp rebuilds it, but only
+// if no one has already replaced the generation the caller observed — otherwise
+// a concurrent rebuild would be thrown away.
+func (s *SecretsServer) invalidateOp(gen uint64) {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
+
+	if gen == s.opGen {
+		s.op = nil
+	}
+}
+
+// isStaleClient reports whether err indicates the 1Password desktop app has
+// invalidated our client (e.g. after an app restart, update, or sleep/wake).
+// The SDK surfaces this as an untyped error, so a string match is the only
+// signal available; see internal/opwd and the onepassword-sdk-go errors.go
+// default case.
+func isStaleClient(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "invalid client id")
+}
+
+// resolveSecret resolves a 1Password reference, transparently rebuilding the
+// client once if the desktop app has invalidated it.
+func (s *SecretsServer) resolveSecret(ctx context.Context, reference string) (string, error) {
+	op, gen, err := s.getOp(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	secret, err := op.ResolveSecret(ctx, reference)
+	if err == nil || !isStaleClient(err) {
+		return secret, err
+	}
+
+	slog.WarnContext(ctx, "1Password client invalidated, recreating", "err", err)
+	s.invalidateOp(gen)
+
+	op, _, err = s.getOp(ctx)
+	if err != nil {
+		return "", err
+	}
+	return op.ResolveSecret(ctx, reference)
 }
 
 var secretNameRe = regexp.MustCompile(`^[0-9a-zA-Z_-]+$`)
@@ -95,14 +149,7 @@ func (s *SecretsServer) GetSecret(ctx context.Context, req *secretsv1.GetSecretR
 
 	if opwd.IsOpwdRef(req.GetReference()) {
 		slog.InfoContext(ctx, "SecretsServer.GetSecret", "reference", req.GetReference(), "source", "OnePassword")
-		var op *opwd.Client
-
-		op, err = s.getOp(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		secret, err = op.ResolveSecret(ctx, req.GetReference())
+		secret, err = s.resolveSecret(ctx, req.GetReference())
 	} else {
 		slog.InfoContext(ctx, "SecretsServer.GetSecret", "reference", req.GetReference(), "source", "DB")
 		var rawSecret models.Secret

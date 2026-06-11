@@ -52,6 +52,7 @@ func main() {
 			subcmd.InitCmd,
 			subcmd.RunCmd,
 			subcmd.SecretCmd,
+			subcmd.ServiceCmd,
 		},
 	}
 
