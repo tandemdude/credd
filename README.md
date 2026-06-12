@@ -51,7 +51,7 @@ Prior to using the CLI, you should install the background service which handles 
 integration. This can be done using the helper wizard ``credd init``. You may change any of the config options
 presented to you, or choose to accept the defaults.
 
-When asked for your 1Password account, you can enter the name of the account as shown in the top right of your
+When asked for your 1Password account, you can enter the name of the account as shown in the top left of your
 1Password desktop application.
 
 > [!IMPORTANT]
