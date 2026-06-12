@@ -60,7 +60,7 @@ e.g. through docker. This will install a `launchd` service that will run on user
 $ credd init
 server address [127.0.0.1:50051]:
 1Password account (press enter to skip):
-wrote config to ~/[.claude.json](../../../.claude.json).credd/config.toml
+wrote config to ~/.credd/config.toml
 Run creddserver automatically at login? [y/N]: y
 ```
 
