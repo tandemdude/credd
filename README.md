@@ -70,7 +70,7 @@ Run creddserver automatically at login? [y/N]: y
 
 ## Usage
 
-To run a comm[.claude.json](../../../.claude.json)and with `credd` substitutions, use the `credd run` command.
+To run a command with `credd` substitutions, use the `credd run` command.
 
 ```bash
 credd run
