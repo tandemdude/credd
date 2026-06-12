@@ -10,6 +10,9 @@ for secrets management, and to enable the 1Password integration.
 > Currently, only MAC OS X is supported. If you are interested in support for Windows / Linux then feel
 > free to create an issue.
 
+> [!CAUTION]
+> Currently, the local database is **NOT** encrypted, this feature is planned to be implemented in the future.
+
 ## Installation
 
 Currently, installation has to be done by building from source. As a prerequisite, you should have golang 1.26 or
