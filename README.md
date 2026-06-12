@@ -26,6 +26,10 @@ git clone https://github.com/tandemdude/credd.git && cd credd
 
 **Build `credd` and `creddserver`:**
 
+Required prerequisites:
+- Install [Taskfile](https://taskfile.dev/)
+- Install [SQLc](https://sqlc.dev/)
+
 ```bash
 task build
 ```
