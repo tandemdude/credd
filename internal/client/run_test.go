@@ -3,8 +3,122 @@ package client
 import (
 	"context"
 	"os"
+	"reflect"
 	"testing"
 )
+
+func TestParseTemplate(t *testing.T) {
+	t.Run("no braces is a single whole-value ref", func(t *testing.T) {
+		got, err := parseTemplate("bar")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []templatePart{{ref: "bar", isRef: true}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("op reference with no braces is a single ref", func(t *testing.T) {
+		got, err := parseTemplate("op://Vault/item/field")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []templatePart{{ref: "op://Vault/item/field", isRef: true}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("literal text around a placeholder", func(t *testing.T) {
+		got, err := parseTemplate("postgres://u:{op://V/S/P}@h/db")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []templatePart{
+			{literal: "postgres://u:"},
+			{ref: "op://V/S/P", isRef: true},
+			{literal: "@h/db"},
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("adjacent placeholders", func(t *testing.T) {
+		got, err := parseTemplate("{a}{b}")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []templatePart{
+			{ref: "a", isRef: true},
+			{ref: "b", isRef: true},
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("whitespace inside a placeholder is trimmed", func(t *testing.T) {
+		got, err := parseTemplate("{ op://V/S/P }")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []templatePart{{ref: "op://V/S/P", isRef: true}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("escaped braces become literal single braces", func(t *testing.T) {
+		got, err := parseTemplate("a{{b}}c{x}")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []templatePart{
+			{literal: "a{b}c"},
+			{ref: "x", isRef: true},
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("escaped braces only, no placeholder", func(t *testing.T) {
+		got, err := parseTemplate("a{{b}}c")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []templatePart{{literal: "a{b}c"}}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("unmatched open brace is an error", func(t *testing.T) {
+		if _, err := parseTemplate("a{b"); err == nil {
+			t.Fatalf("expected error for unmatched '{'")
+		}
+	})
+
+	t.Run("lone close brace is an error", func(t *testing.T) {
+		if _, err := parseTemplate("a}b"); err == nil {
+			t.Fatalf("expected error for lone '}'")
+		}
+	})
+
+	t.Run("empty placeholder is an error", func(t *testing.T) {
+		if _, err := parseTemplate("a{}b"); err == nil {
+			t.Fatalf("expected error for empty placeholder")
+		}
+	})
+
+	t.Run("whitespace-only placeholder is an error", func(t *testing.T) {
+		if _, err := parseTemplate("a{   }b"); err == nil {
+			t.Fatalf("expected error for whitespace-only placeholder")
+		}
+	})
+}
 
 func TestParseEnvSpec(t *testing.T) {
 	t.Run("valid pairs", func(t *testing.T) {

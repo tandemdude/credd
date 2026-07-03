@@ -57,14 +57,100 @@ func (c *Client) Run(ctx context.Context, envSpecs, target []string) (int, error
 
 	env := os.Environ()
 	for _, v := range vars {
-		value, err := c.Show(ctx, v.Ref)
+		value, err := c.resolveValue(ctx, v)
 		if err != nil {
-			return 1, fmt.Errorf("failed to resolve secret %q for %s: %w", v.Ref, v.Name, err)
+			return 1, err
 		}
 		env = append(env, v.Name+"="+value)
 	}
 
 	return runProcess(ctx, env, target)
+}
+
+// resolveValue interprets a var's raw value as a template and resolves every
+// secret reference within it, returning the fully substituted string.
+func (c *Client) resolveValue(ctx context.Context, v EnvVar) (string, error) {
+	parts, err := parseTemplate(v.Ref)
+	if err != nil {
+		return "", fmt.Errorf("invalid --env value for %s: %w", v.Name, err)
+	}
+
+	var b strings.Builder
+	for _, p := range parts {
+		if !p.isRef {
+			b.WriteString(p.literal)
+			continue
+		}
+		value, err := c.Show(ctx, p.ref)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve secret %q for %s: %w", p.ref, v.Name, err)
+		}
+		b.WriteString(value)
+	}
+	return b.String(), nil
+}
+
+// templatePart is one segment of a parsed --env value: either literal text or
+// a secret reference to be resolved and substituted in place.
+type templatePart struct {
+	literal string
+	ref     string
+	isRef   bool
+}
+
+// parseTemplate interprets a raw --env value. A value with no braces is treated
+// as a single secret reference spanning the whole value (the original behaviour:
+// a secret name or an op:// reference). A value containing braces is a template
+// of literal text with {ref} placeholders; each placeholder's content is trimmed
+// and resolved as a reference, while {{ and }} are literal single braces.
+// Unmatched '{', a lone '}', and empty placeholders are errors.
+func parseTemplate(value string) ([]templatePart, error) {
+	if !strings.ContainsAny(value, "{}") {
+		return []templatePart{{ref: value, isRef: true}}, nil
+	}
+
+	var parts []templatePart
+	var lit strings.Builder
+	flush := func() {
+		if lit.Len() > 0 {
+			parts = append(parts, templatePart{literal: lit.String()})
+			lit.Reset()
+		}
+	}
+
+	for i := 0; i < len(value); {
+		switch c := value[i]; c {
+		case '{':
+			if i+1 < len(value) && value[i+1] == '{' {
+				lit.WriteByte('{')
+				i += 2
+				continue
+			}
+			end := strings.IndexByte(value[i+1:], '}')
+			if end < 0 {
+				return nil, fmt.Errorf("unmatched '{' in %q", value)
+			}
+			ref := strings.TrimSpace(value[i+1 : i+1+end])
+			if ref == "" {
+				return nil, fmt.Errorf("empty placeholder in %q", value)
+			}
+			flush()
+			parts = append(parts, templatePart{ref: ref, isRef: true})
+			i += end + 2
+		case '}':
+			if i+1 < len(value) && value[i+1] == '}' {
+				lit.WriteByte('}')
+				i += 2
+				continue
+			}
+			return nil, fmt.Errorf("lone '}' in %q", value)
+		default:
+			lit.WriteByte(c)
+			i++
+		}
+	}
+	flush()
+	return parts, nil
 }
 
 // parseEnvSpec splits each "NAME=ref" entry on the first '='. The ref may
