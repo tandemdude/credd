@@ -40,7 +40,7 @@ On MAC OS X I just place the binaries in `/usr/local/bin`.
 
 ```bash
 sudo mv credd /usr/local/bin/credd
-sudo mv credd /usr/local/bin/creddserver
+sudo mv creddserver /usr/local/bin/creddserver
 ```
 
 Run `credd` and the help text should now show up.
@@ -78,6 +78,19 @@ credd run
   --env BAZ=op://Vault/Secret/Value # populate env var 'BAZ" with the value of the 1Password secret
   -- python3 -c 'import os; print(os.environ["FOO"], os.environ["BAZ"])'  # command to run
 ```
+
+An `--env` value may also be a **template**: literal text with one or more `{ref}` placeholders,
+where each `ref` is a secret name or `op://` reference. This is useful for embedding a secret inside
+a larger string, such as a database connection URI, without having to assemble it separately.
+
+```bash
+credd run
+  --env 'DATABASE_URI=postgresql://user:{op://Vault/Secret/Password}@host:5432/dbname'
+  -- some-command
+```
+
+A value containing no `{...}` placeholders keeps the original behaviour: the entire value is treated
+as a single secret reference. To include a literal brace in a template, double it (`{{` or `}}`).
 
 An example usage of this is within your `.claude.json` file, to be able to configure MCP server secrets
 outside the hardcoded configuration file. This can be combined with pre-configured env vars which

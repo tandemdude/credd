@@ -25,7 +25,7 @@ var RunCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "env",
-			Usage: "env var in NAME=ref form (ref is a secret name or op:// reference); repeatable",
+			Usage: "env var in NAME=value form; value is a secret name, an op:// reference, or a template with {ref} placeholders (use {{ and }} for literal braces); repeatable",
 		},
 	},
 	Action: func(ctx context.Context, cmd *cli.Command) error {
