@@ -14,8 +14,8 @@ import (
 	secretsv1 "github.com/tandemdude/credd/gen/go/secrets/v1"
 	"github.com/tandemdude/credd/internal/config"
 	"github.com/tandemdude/credd/internal/opwd"
+	"github.com/tandemdude/credd/internal/secretstore"
 	"github.com/tandemdude/credd/internal/server"
-	"github.com/tandemdude/credd/internal/sqlite"
 
 	"github.com/urfave/cli/v3"
 	"google.golang.org/grpc"
@@ -23,37 +23,32 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func newOnePasswordClient(opAccountName string) func(ctx context.Context) (server.SecretResolver, error) {
-	return func(ctx context.Context) (server.SecretResolver, error) {
-		c, err := opwd.NewClient(ctx, opAccountName)
-		if err != nil {
-			return nil, err
-		}
-		return c, nil
-	}
-}
-
-func openDB(path string) (*sql.DB, *db.Queries, error) {
+func openDB(path string) (*sql.DB, error) {
 	conn, err := sql.Open("sqlite", "file:"+path+"?_foreign_keys=on")
 	if err != nil {
-		return nil, nil, fmt.Errorf("open database: %w", err)
+		return nil, fmt.Errorf("open database: %w", err)
 	}
 	if err = db.Migrate(conn); err != nil {
 		conn.Close()
-		return nil, nil, fmt.Errorf("migrate database: %w", err)
+		return nil, fmt.Errorf("migrate database: %w", err)
 	}
 
-	return conn, db.New(conn), nil
+	return conn, nil
 }
 
 func runServer(ctx context.Context, addr, opAccountName, dbPath string) error {
-	conn, q, err := openDB(dbPath)
+	// The database holds no secrets; secret values only ever live in an
+	// external secret manager. It is opened (and migrated) here for non-secret
+	// state such as profiles.
+	conn, err := openDB(dbPath)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	store := sqlite.NewStore(q)
+	secrets := secretstore.NewRegistry(
+		opwd.NewStore(opAccountName),
+	)
 
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
@@ -61,7 +56,7 @@ func runServer(ctx context.Context, addr, opAccountName, dbPath string) error {
 			server.LoggingUnaryInterceptor,
 		),
 	)
-	secretsv1.RegisterSecretsServer(grpcServer, server.NewSecretsServer(store.Secrets, newOnePasswordClient(opAccountName)))
+	secretsv1.RegisterSecretsServer(grpcServer, server.NewSecretsServer(secrets))
 
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

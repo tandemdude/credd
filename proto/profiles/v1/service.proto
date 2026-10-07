@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package credd.profiles.v1;
+
+message CreateProfileRequest {
+  string name = 1;
+}
+
+message CreateProfileResponse {}
+
+message ListProfilesRequest {}
+
+message ListProfilesResponse {}
+
+message GetProfileRequest {
+  string name = 1;
+}
+
+message GetProfileResponse {}
+
+message AddProfileSecretRequest {}
+
+message AddProfileSecretResponse {}
+
+message RemoveProfileSecretRequest {}
+
+message RemoveProfileSecretResponse {}
+
+message DeleteProfileRequest {
+  string name = 1;
+}
+
+message DeleteProfileResponse {}
+
+service Profiles {
+  rpc CreateProfile(CreateProfileRequest) returns (CreateProfileResponse);
+
+  rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+
+  rpc AddProfileSecret(AddProfileSecretRequest) returns (AddProfileSecretResponse);
+  rpc RemoveProfileSecret(RemoveProfileSecretRequest) returns (RemoveProfileSecretResponse);
+
+  rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
+}

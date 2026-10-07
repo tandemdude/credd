@@ -3,87 +3,51 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	secretsv1 "github.com/tandemdude/credd/gen/go/secrets/v1"
-	"github.com/tandemdude/credd/internal/domain/models"
-	"github.com/tandemdude/credd/internal/domain/repository"
+	"github.com/tandemdude/credd/internal/secretstore"
 )
 
-// fakeSecretRepo implements repository.SecretRepository for tests.
-// Unimplemented methods are provided by the embedded interface (they panic if called).
-type fakeSecretRepo struct {
-	repository.SecretRepository
-	getSecret func(ctx context.Context, name string) (models.Secret, error)
+// fakeStore implements secretstore.Store for tests.
+type fakeStore struct {
+	secrets map[string]string
+	err     error // returned from every call when non-nil
 }
 
-func (f *fakeSecretRepo) GetSecret(ctx context.Context, name string) (models.Secret, error) {
-	return f.getSecret(ctx, name)
+func (f *fakeStore) Scheme() string { return "fake" }
+
+func (f *fakeStore) Exists(_ context.Context, ref string) (bool, error) {
+	if f.err != nil {
+		return false, f.err
+	}
+	_, ok := f.secrets[ref]
+	return ok, nil
 }
 
-// fakeResolver implements SecretResolver for tests.
-type fakeResolver struct {
-	resolve func(ctx context.Context, reference string) (string, error)
+func (f *fakeStore) Get(_ context.Context, ref string) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	v, ok := f.secrets[ref]
+	if !ok {
+		return "", fmt.Errorf("%w: %q", secretstore.ErrNotFound, ref)
+	}
+	return v, nil
 }
 
-func (f *fakeResolver) ResolveSecret(ctx context.Context, reference string) (string, error) {
-	return f.resolve(ctx, reference)
-}
-
-func TestGetSecretRecreatesClientOnStaleClientError(t *testing.T) {
-	var factoryCalls int
-	factory := func(ctx context.Context) (SecretResolver, error) {
-		factoryCalls++
-		attempt := factoryCalls
-		return &fakeResolver{
-			resolve: func(ctx context.Context, reference string) (string, error) {
-				if attempt == 1 {
-					return "", errors.New("invalid client id")
-				}
-				return "resolved-secret", nil
-			},
-		}, nil
-	}
-
-	srv := NewSecretsServer(&fakeSecretRepo{}, factory)
-
-	resp, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "op://Vault/item/field"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.GetSecret() != "resolved-secret" {
-		t.Fatalf("got %q, want resolved-secret", resp.GetSecret())
-	}
-	if factoryCalls != 2 {
-		t.Fatalf("expected client to be recreated (factory called twice), got %d calls", factoryCalls)
-	}
-}
-
-func TestGetSecretPropagatesRepoError(t *testing.T) {
-	wantErr := errors.New("not found")
-	srv := NewSecretsServer(&fakeSecretRepo{
-		getSecret: func(ctx context.Context, name string) (models.Secret, error) {
-			return models.Secret{}, wantErr
-		},
-	}, nil)
-
-	_, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "mykey"})
-	if !errors.Is(err, wantErr) {
-		t.Fatalf("expected error to propagate, got %v", err)
-	}
+func newTestServer(store *fakeStore) *SecretsServer {
+	return NewSecretsServer(secretstore.NewRegistry(store))
 }
 
 func TestGetSecretReturnsValueOnSuccess(t *testing.T) {
-	srv := NewSecretsServer(&fakeSecretRepo{
-		getSecret: func(ctx context.Context, name string) (models.Secret, error) {
-			return models.Secret{Name: name, Value: "s3cret"}, nil
-		},
-	}, nil)
+	srv := newTestServer(&fakeStore{secrets: map[string]string{"fake://item": "s3cret"}})
 
-	resp, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "mykey"})
+	resp, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "fake://item"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -92,86 +56,51 @@ func TestGetSecretReturnsValueOnSuccess(t *testing.T) {
 	}
 }
 
-func TestGetSecretDoesNotRecreateClientOnOtherErrors(t *testing.T) {
-	var factoryCalls int
-	factory := func(ctx context.Context) (SecretResolver, error) {
-		factoryCalls++
-		return &fakeResolver{
-			resolve: func(ctx context.Context, reference string) (string, error) {
-				return "", errors.New("item not found")
-			},
-		}, nil
-	}
-
-	srv := NewSecretsServer(&fakeSecretRepo{}, factory)
-
-	_, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "op://Vault/item/field"})
-	if err == nil {
-		t.Fatal("expected error to propagate")
-	}
-	if factoryCalls != 1 {
-		t.Fatalf("expected no client recreation for non-stale errors, got %d factory calls", factoryCalls)
-	}
-}
-
-func TestGetSecretReturnsErrorWhenClientStaysStale(t *testing.T) {
-	var factoryCalls int
-	factory := func(ctx context.Context) (SecretResolver, error) {
-		factoryCalls++
-		return &fakeResolver{
-			resolve: func(ctx context.Context, reference string) (string, error) {
-				return "", errors.New("invalid client id")
-			},
-		}, nil
-	}
-
-	srv := NewSecretsServer(&fakeSecretRepo{}, factory)
-
-	_, err := srv.GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: "op://Vault/item/field"})
-	if err == nil {
-		t.Fatal("expected error when client stays stale")
-	}
-	// One rebuild attempt only: initial client + one recreation.
-	if factoryCalls != 2 {
-		t.Fatalf("expected exactly one recreation attempt, got %d factory calls", factoryCalls)
-	}
-}
-
-func TestValidateCreateSecret(t *testing.T) {
+func TestGetSecretErrorCodes(t *testing.T) {
+	otherErr := errors.New("boom")
 	cases := []struct {
-		name       string
-		secretName string
-		value      string
-		wantErr    bool
+		name     string
+		store    *fakeStore
+		ref      string
+		wantCode codes.Code
 	}{
-		{"valid simple", "FOO", "bar", false},
-		{"valid all classes", "Foo_Bar-123", "anything goes here", false},
-		{"valid single char", "A", "bar", false},
-		{"empty name", "", "bar", true},
-		{"space in name", "foo bar", "bar", true},
-		{"slash in name", "foo/bar", "bar", true},
-		{"dot in name", "foo.bar", "bar", true},
-		{"value is op ref", "FOO", "op://Vault/item/field", true},
-		{"value merely contains op", "FOO", "not-op://x", false},
+		{"missing secret", &fakeStore{}, "fake://missing", codes.NotFound},
+		{"bare name", &fakeStore{}, "mykey", codes.InvalidArgument},
+		{"unknown scheme", &fakeStore{}, "bw://item", codes.InvalidArgument},
+		{"invalid reference", &fakeStore{err: fmt.Errorf("%w: bad", secretstore.ErrInvalidReference)}, "fake://x", codes.InvalidArgument},
+		{"other error", &fakeStore{err: otherErr}, "fake://x", codes.Unknown},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateCreateSecret(tc.secretName, tc.value)
-			if tc.wantErr && err == nil {
-				t.Fatalf("expected error, got nil")
+			_, err := newTestServer(tc.store).GetSecret(context.Background(), &secretsv1.GetSecretRequest{Reference: tc.ref})
+			if err == nil {
+				t.Fatal("expected error")
 			}
-			if !tc.wantErr && err != nil {
-				t.Fatalf("expected no error, got %v", err)
-			}
-			if tc.wantErr {
-				if status.Code(err) != codes.InvalidArgument {
-					t.Fatalf("expected InvalidArgument, got %v", status.Code(err))
-				}
-				if status.Convert(err).Message() == "" {
-					t.Fatalf("expected non-empty error message")
-				}
+			if got := status.Code(err); got != tc.wantCode {
+				t.Fatalf("code = %v, want %v (err: %v)", got, tc.wantCode, err)
 			}
 		})
+	}
+}
+
+func TestSecretExists(t *testing.T) {
+	srv := newTestServer(&fakeStore{secrets: map[string]string{"fake://item": "s3cret"}})
+
+	for ref, want := range map[string]bool{"fake://item": true, "fake://missing": false} {
+		resp, err := srv.SecretExists(context.Background(), &secretsv1.SecretExistsRequest{Reference: ref})
+		if err != nil {
+			t.Fatalf("%s: unexpected error: %v", ref, err)
+		}
+		if resp.GetExists() != want {
+			t.Fatalf("%s: exists = %v, want %v", ref, resp.GetExists(), want)
+		}
+	}
+}
+
+func TestSecretExistsRejectsUnsupportedReference(t *testing.T) {
+	_, err := newTestServer(&fakeStore{}).SecretExists(context.Background(), &secretsv1.SecretExistsRequest{Reference: "mykey"})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("code = %v, want InvalidArgument", status.Code(err))
 	}
 }

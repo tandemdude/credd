@@ -21,174 +21,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type CreateSecretRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateSecretRequest) Reset() {
-	*x = CreateSecretRequest{}
-	mi := &file_secrets_v1_service_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateSecretRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateSecretRequest) ProtoMessage() {}
-
-func (x *CreateSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateSecretRequest.ProtoReflect.Descriptor instead.
-func (*CreateSecretRequest) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *CreateSecretRequest) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *CreateSecretRequest) GetValue() string {
-	if x != nil {
-		return x.Value
-	}
-	return ""
-}
-
-type CreateSecretResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateSecretResponse) Reset() {
-	*x = CreateSecretResponse{}
-	mi := &file_secrets_v1_service_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateSecretResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateSecretResponse) ProtoMessage() {}
-
-func (x *CreateSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateSecretResponse.ProtoReflect.Descriptor instead.
-func (*CreateSecretResponse) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{1}
-}
-
-type ListSecretsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListSecretsRequest) Reset() {
-	*x = ListSecretsRequest{}
-	mi := &file_secrets_v1_service_proto_msgTypes[2]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSecretsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSecretsRequest) ProtoMessage() {}
-
-func (x *ListSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[2]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSecretsRequest.ProtoReflect.Descriptor instead.
-func (*ListSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{2}
-}
-
-type ListSecretsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          []string               `protobuf:"bytes,1,rep,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListSecretsResponse) Reset() {
-	*x = ListSecretsResponse{}
-	mi := &file_secrets_v1_service_proto_msgTypes[3]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListSecretsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListSecretsResponse) ProtoMessage() {}
-
-func (x *ListSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[3]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListSecretsResponse.ProtoReflect.Descriptor instead.
-func (*ListSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{3}
-}
-
-func (x *ListSecretsResponse) GetName() []string {
-	if x != nil {
-		return x.Name
-	}
-	return nil
-}
-
 type GetSecretRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Reference     string                 `protobuf:"bytes,1,opt,name=reference,proto3" json:"reference,omitempty"`
@@ -198,7 +30,7 @@ type GetSecretRequest struct {
 
 func (x *GetSecretRequest) Reset() {
 	*x = GetSecretRequest{}
-	mi := &file_secrets_v1_service_proto_msgTypes[4]
+	mi := &file_secrets_v1_service_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -210,7 +42,7 @@ func (x *GetSecretRequest) String() string {
 func (*GetSecretRequest) ProtoMessage() {}
 
 func (x *GetSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[4]
+	mi := &file_secrets_v1_service_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -223,7 +55,7 @@ func (x *GetSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretRequest.ProtoReflect.Descriptor instead.
 func (*GetSecretRequest) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{4}
+	return file_secrets_v1_service_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *GetSecretRequest) GetReference() string {
@@ -242,7 +74,7 @@ type GetSecretResponse struct {
 
 func (x *GetSecretResponse) Reset() {
 	*x = GetSecretResponse{}
-	mi := &file_secrets_v1_service_proto_msgTypes[5]
+	mi := &file_secrets_v1_service_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -254,7 +86,7 @@ func (x *GetSecretResponse) String() string {
 func (*GetSecretResponse) ProtoMessage() {}
 
 func (x *GetSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[5]
+	mi := &file_secrets_v1_service_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -267,7 +99,7 @@ func (x *GetSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSecretResponse.ProtoReflect.Descriptor instead.
 func (*GetSecretResponse) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{5}
+	return file_secrets_v1_service_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetSecretResponse) GetSecret() string {
@@ -277,28 +109,28 @@ func (x *GetSecretResponse) GetSecret() string {
 	return ""
 }
 
-type DeleteSecretRequest struct {
+type SecretExistsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Reference     string                 `protobuf:"bytes,1,opt,name=reference,proto3" json:"reference,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteSecretRequest) Reset() {
-	*x = DeleteSecretRequest{}
-	mi := &file_secrets_v1_service_proto_msgTypes[6]
+func (x *SecretExistsRequest) Reset() {
+	*x = SecretExistsRequest{}
+	mi := &file_secrets_v1_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteSecretRequest) String() string {
+func (x *SecretExistsRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteSecretRequest) ProtoMessage() {}
+func (*SecretExistsRequest) ProtoMessage() {}
 
-func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[6]
+func (x *SecretExistsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_secrets_v1_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -309,39 +141,40 @@ func (x *DeleteSecretRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSecretRequest.ProtoReflect.Descriptor instead.
-func (*DeleteSecretRequest) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{6}
+// Deprecated: Use SecretExistsRequest.ProtoReflect.Descriptor instead.
+func (*SecretExistsRequest) Descriptor() ([]byte, []int) {
+	return file_secrets_v1_service_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *DeleteSecretRequest) GetName() string {
+func (x *SecretExistsRequest) GetReference() string {
 	if x != nil {
-		return x.Name
+		return x.Reference
 	}
 	return ""
 }
 
-type DeleteSecretResponse struct {
+type SecretExistsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	Exists        bool                   `protobuf:"varint,1,opt,name=exists,proto3" json:"exists,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeleteSecretResponse) Reset() {
-	*x = DeleteSecretResponse{}
-	mi := &file_secrets_v1_service_proto_msgTypes[7]
+func (x *SecretExistsResponse) Reset() {
+	*x = SecretExistsResponse{}
+	mi := &file_secrets_v1_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeleteSecretResponse) String() string {
+func (x *SecretExistsResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeleteSecretResponse) ProtoMessage() {}
+func (*SecretExistsResponse) ProtoMessage() {}
 
-func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[7]
+func (x *SecretExistsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_secrets_v1_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -352,110 +185,34 @@ func (x *DeleteSecretResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeleteSecretResponse.ProtoReflect.Descriptor instead.
-func (*DeleteSecretResponse) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{7}
+// Deprecated: Use SecretExistsResponse.ProtoReflect.Descriptor instead.
+func (*SecretExistsResponse) Descriptor() ([]byte, []int) {
+	return file_secrets_v1_service_proto_rawDescGZIP(), []int{3}
 }
 
-type DeleteAllSecretsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteAllSecretsRequest) Reset() {
-	*x = DeleteAllSecretsRequest{}
-	mi := &file_secrets_v1_service_proto_msgTypes[8]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteAllSecretsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteAllSecretsRequest) ProtoMessage() {}
-
-func (x *DeleteAllSecretsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[8]
+func (x *SecretExistsResponse) GetExists() bool {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.Exists
 	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteAllSecretsRequest.ProtoReflect.Descriptor instead.
-func (*DeleteAllSecretsRequest) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{8}
-}
-
-type DeleteAllSecretsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteAllSecretsResponse) Reset() {
-	*x = DeleteAllSecretsResponse{}
-	mi := &file_secrets_v1_service_proto_msgTypes[9]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteAllSecretsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteAllSecretsResponse) ProtoMessage() {}
-
-func (x *DeleteAllSecretsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_secrets_v1_service_proto_msgTypes[9]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteAllSecretsResponse.ProtoReflect.Descriptor instead.
-func (*DeleteAllSecretsResponse) Descriptor() ([]byte, []int) {
-	return file_secrets_v1_service_proto_rawDescGZIP(), []int{9}
+	return false
 }
 
 var File_secrets_v1_service_proto protoreflect.FileDescriptor
 
 const file_secrets_v1_service_proto_rawDesc = "" +
 	"\n" +
-	"\x18secrets/v1/service.proto\x12\x10credd.secrets.v1\"?\n" +
-	"\x13CreateSecretRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\x16\n" +
-	"\x14CreateSecretResponse\"\x14\n" +
-	"\x12ListSecretsRequest\")\n" +
-	"\x13ListSecretsResponse\x12\x12\n" +
-	"\x04name\x18\x01 \x03(\tR\x04name\"0\n" +
+	"\x18secrets/v1/service.proto\x12\x10credd.secrets.v1\"0\n" +
 	"\x10GetSecretRequest\x12\x1c\n" +
 	"\treference\x18\x01 \x01(\tR\treference\"+\n" +
 	"\x11GetSecretResponse\x12\x16\n" +
-	"\x06secret\x18\x01 \x01(\tR\x06secret\")\n" +
-	"\x13DeleteSecretRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\x16\n" +
-	"\x14DeleteSecretResponse\"\x19\n" +
-	"\x17DeleteAllSecretsRequest\"\x1a\n" +
-	"\x18DeleteAllSecretsResponse2\xe4\x03\n" +
-	"\aSecrets\x12]\n" +
-	"\fCreateSecret\x12%.credd.secrets.v1.CreateSecretRequest\x1a&.credd.secrets.v1.CreateSecretResponse\x12Z\n" +
-	"\vListSecrets\x12$.credd.secrets.v1.ListSecretsRequest\x1a%.credd.secrets.v1.ListSecretsResponse\x12T\n" +
+	"\x06secret\x18\x01 \x01(\tR\x06secret\"3\n" +
+	"\x13SecretExistsRequest\x12\x1c\n" +
+	"\treference\x18\x01 \x01(\tR\treference\".\n" +
+	"\x14SecretExistsResponse\x12\x16\n" +
+	"\x06exists\x18\x01 \x01(\bR\x06exists2\xbe\x01\n" +
+	"\aSecrets\x12T\n" +
 	"\tGetSecret\x12\".credd.secrets.v1.GetSecretRequest\x1a#.credd.secrets.v1.GetSecretResponse\x12]\n" +
-	"\fDeleteSecret\x12%.credd.secrets.v1.DeleteSecretRequest\x1a&.credd.secrets.v1.DeleteSecretResponse\x12i\n" +
-	"\x10DeleteAllSecrets\x12).credd.secrets.v1.DeleteAllSecretsRequest\x1a*.credd.secrets.v1.DeleteAllSecretsResponseB\xa9\x01\n" +
+	"\fSecretExists\x12%.credd.secrets.v1.SecretExistsRequest\x1a&.credd.secrets.v1.SecretExistsResponseB\xa9\x01\n" +
 	"\x14com.credd.secrets.v1B\fServiceProtoP\x01Z!credd/gen/go/secrets/v1;secretsv1\xa2\x02\x03CSX\xaa\x02\x10Credd.Secrets.V1\xca\x02\x10Credd\\Secrets\\V1\xe2\x02\x1cCredd\\Secrets\\V1\\GPBMetadata\xea\x02\x12Credd::Secrets::V1b\x06proto3"
 
 var (
@@ -470,32 +227,20 @@ func file_secrets_v1_service_proto_rawDescGZIP() []byte {
 	return file_secrets_v1_service_proto_rawDescData
 }
 
-var file_secrets_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_secrets_v1_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_secrets_v1_service_proto_goTypes = []any{
-	(*CreateSecretRequest)(nil),      // 0: credd.secrets.v1.CreateSecretRequest
-	(*CreateSecretResponse)(nil),     // 1: credd.secrets.v1.CreateSecretResponse
-	(*ListSecretsRequest)(nil),       // 2: credd.secrets.v1.ListSecretsRequest
-	(*ListSecretsResponse)(nil),      // 3: credd.secrets.v1.ListSecretsResponse
-	(*GetSecretRequest)(nil),         // 4: credd.secrets.v1.GetSecretRequest
-	(*GetSecretResponse)(nil),        // 5: credd.secrets.v1.GetSecretResponse
-	(*DeleteSecretRequest)(nil),      // 6: credd.secrets.v1.DeleteSecretRequest
-	(*DeleteSecretResponse)(nil),     // 7: credd.secrets.v1.DeleteSecretResponse
-	(*DeleteAllSecretsRequest)(nil),  // 8: credd.secrets.v1.DeleteAllSecretsRequest
-	(*DeleteAllSecretsResponse)(nil), // 9: credd.secrets.v1.DeleteAllSecretsResponse
+	(*GetSecretRequest)(nil),     // 0: credd.secrets.v1.GetSecretRequest
+	(*GetSecretResponse)(nil),    // 1: credd.secrets.v1.GetSecretResponse
+	(*SecretExistsRequest)(nil),  // 2: credd.secrets.v1.SecretExistsRequest
+	(*SecretExistsResponse)(nil), // 3: credd.secrets.v1.SecretExistsResponse
 }
 var file_secrets_v1_service_proto_depIdxs = []int32{
-	0, // 0: credd.secrets.v1.Secrets.CreateSecret:input_type -> credd.secrets.v1.CreateSecretRequest
-	2, // 1: credd.secrets.v1.Secrets.ListSecrets:input_type -> credd.secrets.v1.ListSecretsRequest
-	4, // 2: credd.secrets.v1.Secrets.GetSecret:input_type -> credd.secrets.v1.GetSecretRequest
-	6, // 3: credd.secrets.v1.Secrets.DeleteSecret:input_type -> credd.secrets.v1.DeleteSecretRequest
-	8, // 4: credd.secrets.v1.Secrets.DeleteAllSecrets:input_type -> credd.secrets.v1.DeleteAllSecretsRequest
-	1, // 5: credd.secrets.v1.Secrets.CreateSecret:output_type -> credd.secrets.v1.CreateSecretResponse
-	3, // 6: credd.secrets.v1.Secrets.ListSecrets:output_type -> credd.secrets.v1.ListSecretsResponse
-	5, // 7: credd.secrets.v1.Secrets.GetSecret:output_type -> credd.secrets.v1.GetSecretResponse
-	7, // 8: credd.secrets.v1.Secrets.DeleteSecret:output_type -> credd.secrets.v1.DeleteSecretResponse
-	9, // 9: credd.secrets.v1.Secrets.DeleteAllSecrets:output_type -> credd.secrets.v1.DeleteAllSecretsResponse
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
+	0, // 0: credd.secrets.v1.Secrets.GetSecret:input_type -> credd.secrets.v1.GetSecretRequest
+	2, // 1: credd.secrets.v1.Secrets.SecretExists:input_type -> credd.secrets.v1.SecretExistsRequest
+	1, // 2: credd.secrets.v1.Secrets.GetSecret:output_type -> credd.secrets.v1.GetSecretResponse
+	3, // 3: credd.secrets.v1.Secrets.SecretExists:output_type -> credd.secrets.v1.SecretExistsResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -512,7 +257,7 @@ func file_secrets_v1_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_secrets_v1_service_proto_rawDesc), len(file_secrets_v1_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

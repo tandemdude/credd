@@ -19,22 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Secrets_CreateSecret_FullMethodName     = "/credd.secrets.v1.Secrets/CreateSecret"
-	Secrets_ListSecrets_FullMethodName      = "/credd.secrets.v1.Secrets/ListSecrets"
-	Secrets_GetSecret_FullMethodName        = "/credd.secrets.v1.Secrets/GetSecret"
-	Secrets_DeleteSecret_FullMethodName     = "/credd.secrets.v1.Secrets/DeleteSecret"
-	Secrets_DeleteAllSecrets_FullMethodName = "/credd.secrets.v1.Secrets/DeleteAllSecrets"
+	Secrets_GetSecret_FullMethodName    = "/credd.secrets.v1.Secrets/GetSecret"
+	Secrets_SecretExists_FullMethodName = "/credd.secrets.v1.Secrets/SecretExists"
 )
 
 // SecretsClient is the client API for Secrets service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SecretsClient interface {
-	CreateSecret(ctx context.Context, in *CreateSecretRequest, opts ...grpc.CallOption) (*CreateSecretResponse, error)
-	ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error)
 	GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error)
-	DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error)
-	DeleteAllSecrets(ctx context.Context, in *DeleteAllSecretsRequest, opts ...grpc.CallOption) (*DeleteAllSecretsResponse, error)
+	SecretExists(ctx context.Context, in *SecretExistsRequest, opts ...grpc.CallOption) (*SecretExistsResponse, error)
 }
 
 type secretsClient struct {
@@ -43,26 +37,6 @@ type secretsClient struct {
 
 func NewSecretsClient(cc grpc.ClientConnInterface) SecretsClient {
 	return &secretsClient{cc}
-}
-
-func (c *secretsClient) CreateSecret(ctx context.Context, in *CreateSecretRequest, opts ...grpc.CallOption) (*CreateSecretResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateSecretResponse)
-	err := c.cc.Invoke(ctx, Secrets_CreateSecret_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *secretsClient) ListSecrets(ctx context.Context, in *ListSecretsRequest, opts ...grpc.CallOption) (*ListSecretsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListSecretsResponse)
-	err := c.cc.Invoke(ctx, Secrets_ListSecrets_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *secretsClient) GetSecret(ctx context.Context, in *GetSecretRequest, opts ...grpc.CallOption) (*GetSecretResponse, error) {
@@ -75,20 +49,10 @@ func (c *secretsClient) GetSecret(ctx context.Context, in *GetSecretRequest, opt
 	return out, nil
 }
 
-func (c *secretsClient) DeleteSecret(ctx context.Context, in *DeleteSecretRequest, opts ...grpc.CallOption) (*DeleteSecretResponse, error) {
+func (c *secretsClient) SecretExists(ctx context.Context, in *SecretExistsRequest, opts ...grpc.CallOption) (*SecretExistsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DeleteSecretResponse)
-	err := c.cc.Invoke(ctx, Secrets_DeleteSecret_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *secretsClient) DeleteAllSecrets(ctx context.Context, in *DeleteAllSecretsRequest, opts ...grpc.CallOption) (*DeleteAllSecretsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DeleteAllSecretsResponse)
-	err := c.cc.Invoke(ctx, Secrets_DeleteAllSecrets_FullMethodName, in, out, cOpts...)
+	out := new(SecretExistsResponse)
+	err := c.cc.Invoke(ctx, Secrets_SecretExists_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +63,8 @@ func (c *secretsClient) DeleteAllSecrets(ctx context.Context, in *DeleteAllSecre
 // All implementations must embed UnimplementedSecretsServer
 // for forward compatibility.
 type SecretsServer interface {
-	CreateSecret(context.Context, *CreateSecretRequest) (*CreateSecretResponse, error)
-	ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error)
 	GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error)
-	DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error)
-	DeleteAllSecrets(context.Context, *DeleteAllSecretsRequest) (*DeleteAllSecretsResponse, error)
+	SecretExists(context.Context, *SecretExistsRequest) (*SecretExistsResponse, error)
 	mustEmbedUnimplementedSecretsServer()
 }
 
@@ -114,20 +75,11 @@ type SecretsServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSecretsServer struct{}
 
-func (UnimplementedSecretsServer) CreateSecret(context.Context, *CreateSecretRequest) (*CreateSecretResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateSecret not implemented")
-}
-func (UnimplementedSecretsServer) ListSecrets(context.Context, *ListSecretsRequest) (*ListSecretsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListSecrets not implemented")
-}
 func (UnimplementedSecretsServer) GetSecret(context.Context, *GetSecretRequest) (*GetSecretResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetSecret not implemented")
 }
-func (UnimplementedSecretsServer) DeleteSecret(context.Context, *DeleteSecretRequest) (*DeleteSecretResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method DeleteSecret not implemented")
-}
-func (UnimplementedSecretsServer) DeleteAllSecrets(context.Context, *DeleteAllSecretsRequest) (*DeleteAllSecretsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method DeleteAllSecrets not implemented")
+func (UnimplementedSecretsServer) SecretExists(context.Context, *SecretExistsRequest) (*SecretExistsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SecretExists not implemented")
 }
 func (UnimplementedSecretsServer) mustEmbedUnimplementedSecretsServer() {}
 func (UnimplementedSecretsServer) testEmbeddedByValue()                 {}
@@ -150,42 +102,6 @@ func RegisterSecretsServer(s grpc.ServiceRegistrar, srv SecretsServer) {
 	s.RegisterService(&Secrets_ServiceDesc, srv)
 }
 
-func _Secrets_CreateSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateSecretRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SecretsServer).CreateSecret(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Secrets_CreateSecret_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SecretsServer).CreateSecret(ctx, req.(*CreateSecretRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Secrets_ListSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListSecretsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SecretsServer).ListSecrets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Secrets_ListSecrets_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SecretsServer).ListSecrets(ctx, req.(*ListSecretsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Secrets_GetSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetSecretRequest)
 	if err := dec(in); err != nil {
@@ -204,38 +120,20 @@ func _Secrets_GetSecret_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Secrets_DeleteSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteSecretRequest)
+func _Secrets_SecretExists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretExistsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SecretsServer).DeleteSecret(ctx, in)
+		return srv.(SecretsServer).SecretExists(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Secrets_DeleteSecret_FullMethodName,
+		FullMethod: Secrets_SecretExists_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SecretsServer).DeleteSecret(ctx, req.(*DeleteSecretRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Secrets_DeleteAllSecrets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteAllSecretsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SecretsServer).DeleteAllSecrets(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Secrets_DeleteAllSecrets_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SecretsServer).DeleteAllSecrets(ctx, req.(*DeleteAllSecretsRequest))
+		return srv.(SecretsServer).SecretExists(ctx, req.(*SecretExistsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -248,24 +146,12 @@ var Secrets_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SecretsServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateSecret",
-			Handler:    _Secrets_CreateSecret_Handler,
-		},
-		{
-			MethodName: "ListSecrets",
-			Handler:    _Secrets_ListSecrets_Handler,
-		},
-		{
 			MethodName: "GetSecret",
 			Handler:    _Secrets_GetSecret_Handler,
 		},
 		{
-			MethodName: "DeleteSecret",
-			Handler:    _Secrets_DeleteSecret_Handler,
-		},
-		{
-			MethodName: "DeleteAllSecrets",
-			Handler:    _Secrets_DeleteAllSecrets_Handler,
+			MethodName: "SecretExists",
+			Handler:    _Secrets_SecretExists_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

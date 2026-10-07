@@ -81,7 +81,7 @@ func (c *Client) resolveValue(ctx context.Context, v EnvVar) (string, error) {
 			b.WriteString(p.literal)
 			continue
 		}
-		value, err := c.Show(ctx, p.ref)
+		value, err := c.Get(ctx, p.ref)
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve secret %q for %s: %w", p.ref, v.Name, err)
 		}
@@ -99,8 +99,8 @@ type templatePart struct {
 }
 
 // parseTemplate interprets a raw --env value. A value with no braces is treated
-// as a single secret reference spanning the whole value (the original behaviour:
-// a secret name or an op:// reference). A value containing braces is a template
+// as a single secret reference (e.g. op://vault/item/field) spanning the whole
+// value. A value containing braces is a template
 // of literal text with {ref} placeholders; each placeholder's content is trimmed
 // and resolved as a reference, while {{ and }} are literal single braces.
 // Unmatched '{', a lone '}', and empty placeholders are errors.

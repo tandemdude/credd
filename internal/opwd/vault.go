@@ -2,14 +2,17 @@ package opwd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
 	"github.com/1password/onepassword-sdk-go"
+
+	"github.com/tandemdude/credd/internal/secretstore"
 )
 
-var ErrVaultNotExist = errors.New("vault does not exist")
+// ErrVaultNotExist wraps secretstore.ErrNotFound: a reference into a missing
+// vault cannot point at an existing secret.
+var ErrVaultNotExist = fmt.Errorf("vault does not exist: %w", secretstore.ErrNotFound)
 
 var knownRemaps = map[string]string{
 	"Employee": "Private",

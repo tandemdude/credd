@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 )
 
@@ -33,11 +32,4 @@ func ScanYes(scanner *bufio.Scanner) bool {
 	}
 	a := strings.TrimSpace(scanner.Text())
 	return strings.EqualFold(a, "y") || strings.EqualFold(a, "yes")
-}
-
-// Confirm prints prompt to stderr and returns true for an affirmative answer
-// (y/yes, case-insensitive).
-func Confirm(prompt string) bool {
-	fmt.Fprint(os.Stderr, prompt)
-	return ScanYes(bufio.NewScanner(os.Stdin))
 }

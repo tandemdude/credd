@@ -3,15 +3,13 @@
 Credd is a tool to permit injecting secret values into command-line tools. Currently, this is done using environment
 variable substitution, but there is scope for extending this to add CLI-argument substitution in the future.
 
-Secrets can either be stored locally on-machine, or read from 1Password. The CLI tool calls out to `creddserver`
-for secrets management, and to enable the 1Password integration.
+Secrets are never stored by credd itself; they are always read from an external secret manager. Currently
+1Password is the only supported secret manager. The CLI tool calls out to `creddserver`, which handles the
+secret manager integrations.
 
 > [!NOTE]
 > Currently, only MAC OS X is supported. If you are interested in support for Windows / Linux then feel
 > free to create an issue.
-
-> [!CAUTION]
-> Currently, the local database is **NOT** encrypted, this feature is planned to be implemented in the future.
 
 ## Installation
 
@@ -74,13 +72,12 @@ To run a command with `credd` substitutions, use the `credd run` command.
 
 ```bash
 credd run
-  --env FOO=bar # populate env var 'FOO' with the value of secret 'bar' from the credd database
-  --env BAZ=op://Vault/Secret/Value # populate env var 'BAZ" with the value of the 1Password secret
-  -- python3 -c 'import os; print(os.environ["FOO"], os.environ["BAZ"])'  # command to run
+  --env FOO=op://Vault/Secret/Value # populate env var 'FOO' with the value of the 1Password secret
+  -- python3 -c 'import os; print(os.environ["FOO"])'  # command to run
 ```
 
 An `--env` value may also be a **template**: literal text with one or more `{ref}` placeholders,
-where each `ref` is a secret name or `op://` reference. This is useful for embedding a secret inside
+where each `ref` is a secret reference such as `op://Vault/Secret/Value`. This is useful for embedding a secret inside
 a larger string, such as a database connection URI, without having to assemble it separately.
 
 ```bash
@@ -89,8 +86,14 @@ credd run
   -- some-command
 ```
 
-A value containing no `{...}` placeholders keeps the original behaviour: the entire value is treated
-as a single secret reference. To include a literal brace in a template, double it (`{{` or `}}`).
+A value containing no `{...}` placeholders is treated as a single secret reference in its entirety. To include a literal brace in a template, double it (`{{` or `}}`).
+
+To check a secret or print its value without running a command, use `credd secret`:
+
+```bash
+credd secret exists op://Vault/Secret/Value  # exit status 0 if the secret exists, 1 if not
+credd secret show op://Vault/Secret/Value    # print the secret's value
+```
 
 An example usage of this is within your `.claude.json` file, to be able to configure MCP server secrets
 outside the hardcoded configuration file. This can be combined with pre-configured env vars which

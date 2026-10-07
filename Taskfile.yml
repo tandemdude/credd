@@ -19,7 +19,8 @@ tasks:
     run: once
     desc: Generate all required code
     cmds:
-      - sqlc generate
+      # sqlc refuses to run without any queries; skip it until some exist.
+      - if grep -q '^-- name:' db/src/queries.sql; then sqlc generate; fi
       - buf generate
     sources:
       - db/src/**/*.sql
