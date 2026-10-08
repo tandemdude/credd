@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"net"
@@ -11,11 +10,13 @@ import (
 	"syscall"
 
 	"github.com/tandemdude/credd/db"
+	profilesv1 "github.com/tandemdude/credd/gen/go/profiles/v1"
 	secretsv1 "github.com/tandemdude/credd/gen/go/secrets/v1"
 	"github.com/tandemdude/credd/internal/config"
 	"github.com/tandemdude/credd/internal/opwd"
 	"github.com/tandemdude/credd/internal/secretstore"
 	"github.com/tandemdude/credd/internal/server"
+	"github.com/tandemdude/credd/internal/sqlite"
 
 	"github.com/urfave/cli/v3"
 	"google.golang.org/grpc"
@@ -23,28 +24,16 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func openDB(path string) (*sql.DB, error) {
-	conn, err := sql.Open("sqlite", "file:"+path+"?_foreign_keys=on")
-	if err != nil {
-		return nil, fmt.Errorf("open database: %w", err)
-	}
-	if err = db.Migrate(conn); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("migrate database: %w", err)
-	}
-
-	return conn, nil
-}
-
 func runServer(ctx context.Context, addr, opAccountName, dbPath string) error {
 	// The database holds no secrets; secret values only ever live in an
-	// external secret manager. It is opened (and migrated) here for non-secret
-	// state such as profiles.
-	conn, err := openDB(dbPath)
+	// external secret manager. It only stores non-secret state such as profiles.
+	conn, err := db.Open(dbPath)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
+
+	store := sqlite.NewStore(db.New(conn))
 
 	secrets := secretstore.NewRegistry(
 		opwd.NewStore(opAccountName),
@@ -57,6 +46,7 @@ func runServer(ctx context.Context, addr, opAccountName, dbPath string) error {
 		),
 	)
 	secretsv1.RegisterSecretsServer(grpcServer, server.NewSecretsServer(secrets))
+	profilesv1.RegisterProfilesServer(grpcServer, server.NewProfilesServer(store.Profiles, secrets.Supports))
 
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

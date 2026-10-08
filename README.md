@@ -88,6 +88,37 @@ credd run
 
 A value containing no `{...}` placeholders is treated as a single secret reference in its entirety. To include a literal brace in a template, double it (`{{` or `}}`).
 
+### Profiles
+
+A profile is a named collection of env vars, so a set of variables can be reused across commands without
+repeating `--env` flags. A profile var can hold either a secret or a plain value:
+
+- a value that is a secret reference (e.g. `op://Vault/Secret/Value`), or a template containing one
+  (e.g. `postgresql://user:{op://Vault/DB/Password}@host/db`), is a **secret** and is resolved when the
+  command runs
+- anything else (e.g. `dev`) is a **plain** value and is used as-is
+
+Profiles never store secret values; only the references are stored.
+
+```bash
+credd profile create dev
+credd profile set dev ENV=dev SENTRY_ACCESS_TOKEN=op://Private/Sentry/AccessToken
+credd profile show dev       # list vars, their kind, and their (unresolved) values
+credd profile validate dev   # check every referenced secret exists, without fetching any values
+```
+
+Use `--profile` (or `-p`) with `credd run` to inject a profile's vars. It can be repeated to combine
+profiles: later profiles add to earlier ones and override any vars they share. Individual `--env` flags
+can still be used alongside profiles, and always take precedence over them.
+
+```bash
+credd run --profile base --profile dev --env EXTRA=op://Vault/Secret/Value -- some-command
+```
+
+The other `credd profile` subcommands are `list`, `unset <profile> NAME...` and `delete <profile>`.
+
+### Secrets
+
 To check a secret or print its value without running a command, use `credd secret`:
 
 ```bash

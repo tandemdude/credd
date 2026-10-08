@@ -21,8 +21,13 @@ func dial(cmd *cli.Command) (*client.Client, error) {
 var RunCmd = &cli.Command{
 	Name:      "run",
 	Usage:     "run a command with secrets injected as env vars",
-	ArgsUsage: "--env NAME=ref [--env NAME=ref ...] -- <cmd> [args...]",
+	ArgsUsage: "[--profile NAME ...] [--env NAME=ref ...] -- <cmd> [args...]",
 	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:    "profile",
+			Aliases: []string{"p"},
+			Usage:   "profile whose vars to inject; repeatable, later profiles override earlier ones, and --env overrides all profiles",
+		},
 		&cli.StringSliceFlag{
 			Name:  "env",
 			Usage: "env var in NAME=value form; value is a secret reference (e.g. op://vault/item/field) or a template with {ref} placeholders (use {{ and }} for literal braces); repeatable",
@@ -35,7 +40,7 @@ var RunCmd = &cli.Command{
 		}
 		defer c.Close()
 
-		code, err := c.Run(ctx, cmd.StringSlice("env"), cmd.Args().Slice())
+		code, err := c.Run(ctx, cmd.StringSlice("profile"), cmd.StringSlice("env"), cmd.Args().Slice())
 		if err != nil {
 			return err
 		}

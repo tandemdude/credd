@@ -2,6 +2,26 @@ syntax = "proto3";
 
 package credd.profiles.v1;
 
+// VarKind is detected by the server when a var is set: a value that is a
+// supported secret reference (e.g. op://...), or a template containing one,
+// is a secret; anything else is a plain value used verbatim.
+enum VarKind {
+  VAR_KIND_UNSPECIFIED = 0;
+  VAR_KIND_PLAIN = 1;
+  VAR_KIND_SECRET = 2;
+}
+
+message ProfileVar {
+  string name = 1;
+  string value = 2;
+  VarKind kind = 3;
+}
+
+message Profile {
+  string name = 1;
+  repeated ProfileVar vars = 2;
+}
+
 message CreateProfileRequest {
   string name = 1;
 }
@@ -10,21 +30,34 @@ message CreateProfileResponse {}
 
 message ListProfilesRequest {}
 
-message ListProfilesResponse {}
+message ListProfilesResponse {
+  repeated string names = 1;
+}
 
 message GetProfileRequest {
   string name = 1;
 }
 
-message GetProfileResponse {}
+message GetProfileResponse {
+  Profile profile = 1;
+}
 
-message AddProfileSecretRequest {}
+message SetProfileVarRequest {
+  string profile = 1;
+  string name = 2;
+  string value = 3;
+}
 
-message AddProfileSecretResponse {}
+message SetProfileVarResponse {
+  ProfileVar var = 1;
+}
 
-message RemoveProfileSecretRequest {}
+message UnsetProfileVarRequest {
+  string profile = 1;
+  string name = 2;
+}
 
-message RemoveProfileSecretResponse {}
+message UnsetProfileVarResponse {}
 
 message DeleteProfileRequest {
   string name = 1;
@@ -38,8 +71,8 @@ service Profiles {
   rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
 
-  rpc AddProfileSecret(AddProfileSecretRequest) returns (AddProfileSecretResponse);
-  rpc RemoveProfileSecret(RemoveProfileSecretRequest) returns (RemoveProfileSecretResponse);
+  rpc SetProfileVar(SetProfileVarRequest) returns (SetProfileVarResponse);
+  rpc UnsetProfileVar(UnsetProfileVarRequest) returns (UnsetProfileVarResponse);
 
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
 }

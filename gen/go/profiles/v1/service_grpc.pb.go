@@ -19,12 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Profiles_CreateProfile_FullMethodName       = "/credd.profiles.v1.Profiles/CreateProfile"
-	Profiles_ListProfiles_FullMethodName        = "/credd.profiles.v1.Profiles/ListProfiles"
-	Profiles_GetProfile_FullMethodName          = "/credd.profiles.v1.Profiles/GetProfile"
-	Profiles_AddProfileSecret_FullMethodName    = "/credd.profiles.v1.Profiles/AddProfileSecret"
-	Profiles_RemoveProfileSecret_FullMethodName = "/credd.profiles.v1.Profiles/RemoveProfileSecret"
-	Profiles_DeleteProfile_FullMethodName       = "/credd.profiles.v1.Profiles/DeleteProfile"
+	Profiles_CreateProfile_FullMethodName   = "/credd.profiles.v1.Profiles/CreateProfile"
+	Profiles_ListProfiles_FullMethodName    = "/credd.profiles.v1.Profiles/ListProfiles"
+	Profiles_GetProfile_FullMethodName      = "/credd.profiles.v1.Profiles/GetProfile"
+	Profiles_SetProfileVar_FullMethodName   = "/credd.profiles.v1.Profiles/SetProfileVar"
+	Profiles_UnsetProfileVar_FullMethodName = "/credd.profiles.v1.Profiles/UnsetProfileVar"
+	Profiles_DeleteProfile_FullMethodName   = "/credd.profiles.v1.Profiles/DeleteProfile"
 )
 
 // ProfilesClient is the client API for Profiles service.
@@ -34,8 +34,8 @@ type ProfilesClient interface {
 	CreateProfile(ctx context.Context, in *CreateProfileRequest, opts ...grpc.CallOption) (*CreateProfileResponse, error)
 	ListProfiles(ctx context.Context, in *ListProfilesRequest, opts ...grpc.CallOption) (*ListProfilesResponse, error)
 	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
-	AddProfileSecret(ctx context.Context, in *AddProfileSecretRequest, opts ...grpc.CallOption) (*AddProfileSecretResponse, error)
-	RemoveProfileSecret(ctx context.Context, in *RemoveProfileSecretRequest, opts ...grpc.CallOption) (*RemoveProfileSecretResponse, error)
+	SetProfileVar(ctx context.Context, in *SetProfileVarRequest, opts ...grpc.CallOption) (*SetProfileVarResponse, error)
+	UnsetProfileVar(ctx context.Context, in *UnsetProfileVarRequest, opts ...grpc.CallOption) (*UnsetProfileVarResponse, error)
 	DeleteProfile(ctx context.Context, in *DeleteProfileRequest, opts ...grpc.CallOption) (*DeleteProfileResponse, error)
 }
 
@@ -77,20 +77,20 @@ func (c *profilesClient) GetProfile(ctx context.Context, in *GetProfileRequest, 
 	return out, nil
 }
 
-func (c *profilesClient) AddProfileSecret(ctx context.Context, in *AddProfileSecretRequest, opts ...grpc.CallOption) (*AddProfileSecretResponse, error) {
+func (c *profilesClient) SetProfileVar(ctx context.Context, in *SetProfileVarRequest, opts ...grpc.CallOption) (*SetProfileVarResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AddProfileSecretResponse)
-	err := c.cc.Invoke(ctx, Profiles_AddProfileSecret_FullMethodName, in, out, cOpts...)
+	out := new(SetProfileVarResponse)
+	err := c.cc.Invoke(ctx, Profiles_SetProfileVar_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *profilesClient) RemoveProfileSecret(ctx context.Context, in *RemoveProfileSecretRequest, opts ...grpc.CallOption) (*RemoveProfileSecretResponse, error) {
+func (c *profilesClient) UnsetProfileVar(ctx context.Context, in *UnsetProfileVarRequest, opts ...grpc.CallOption) (*UnsetProfileVarResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RemoveProfileSecretResponse)
-	err := c.cc.Invoke(ctx, Profiles_RemoveProfileSecret_FullMethodName, in, out, cOpts...)
+	out := new(UnsetProfileVarResponse)
+	err := c.cc.Invoke(ctx, Profiles_UnsetProfileVar_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +114,8 @@ type ProfilesServer interface {
 	CreateProfile(context.Context, *CreateProfileRequest) (*CreateProfileResponse, error)
 	ListProfiles(context.Context, *ListProfilesRequest) (*ListProfilesResponse, error)
 	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
-	AddProfileSecret(context.Context, *AddProfileSecretRequest) (*AddProfileSecretResponse, error)
-	RemoveProfileSecret(context.Context, *RemoveProfileSecretRequest) (*RemoveProfileSecretResponse, error)
+	SetProfileVar(context.Context, *SetProfileVarRequest) (*SetProfileVarResponse, error)
+	UnsetProfileVar(context.Context, *UnsetProfileVarRequest) (*UnsetProfileVarResponse, error)
 	DeleteProfile(context.Context, *DeleteProfileRequest) (*DeleteProfileResponse, error)
 	mustEmbedUnimplementedProfilesServer()
 }
@@ -136,11 +136,11 @@ func (UnimplementedProfilesServer) ListProfiles(context.Context, *ListProfilesRe
 func (UnimplementedProfilesServer) GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProfile not implemented")
 }
-func (UnimplementedProfilesServer) AddProfileSecret(context.Context, *AddProfileSecretRequest) (*AddProfileSecretResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method AddProfileSecret not implemented")
+func (UnimplementedProfilesServer) SetProfileVar(context.Context, *SetProfileVarRequest) (*SetProfileVarResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetProfileVar not implemented")
 }
-func (UnimplementedProfilesServer) RemoveProfileSecret(context.Context, *RemoveProfileSecretRequest) (*RemoveProfileSecretResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method RemoveProfileSecret not implemented")
+func (UnimplementedProfilesServer) UnsetProfileVar(context.Context, *UnsetProfileVarRequest) (*UnsetProfileVarResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnsetProfileVar not implemented")
 }
 func (UnimplementedProfilesServer) DeleteProfile(context.Context, *DeleteProfileRequest) (*DeleteProfileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteProfile not implemented")
@@ -220,38 +220,38 @@ func _Profiles_GetProfile_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Profiles_AddProfileSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddProfileSecretRequest)
+func _Profiles_SetProfileVar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetProfileVarRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ProfilesServer).AddProfileSecret(ctx, in)
+		return srv.(ProfilesServer).SetProfileVar(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Profiles_AddProfileSecret_FullMethodName,
+		FullMethod: Profiles_SetProfileVar_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ProfilesServer).AddProfileSecret(ctx, req.(*AddProfileSecretRequest))
+		return srv.(ProfilesServer).SetProfileVar(ctx, req.(*SetProfileVarRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Profiles_RemoveProfileSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveProfileSecretRequest)
+func _Profiles_UnsetProfileVar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsetProfileVarRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ProfilesServer).RemoveProfileSecret(ctx, in)
+		return srv.(ProfilesServer).UnsetProfileVar(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Profiles_RemoveProfileSecret_FullMethodName,
+		FullMethod: Profiles_UnsetProfileVar_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ProfilesServer).RemoveProfileSecret(ctx, req.(*RemoveProfileSecretRequest))
+		return srv.(ProfilesServer).UnsetProfileVar(ctx, req.(*UnsetProfileVarRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -294,12 +294,12 @@ var Profiles_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Profiles_GetProfile_Handler,
 		},
 		{
-			MethodName: "AddProfileSecret",
-			Handler:    _Profiles_AddProfileSecret_Handler,
+			MethodName: "SetProfileVar",
+			Handler:    _Profiles_SetProfileVar_Handler,
 		},
 		{
-			MethodName: "RemoveProfileSecret",
-			Handler:    _Profiles_RemoveProfileSecret_Handler,
+			MethodName: "UnsetProfileVar",
+			Handler:    _Profiles_UnsetProfileVar_Handler,
 		},
 		{
 			MethodName: "DeleteProfile",

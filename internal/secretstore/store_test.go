@@ -89,3 +89,17 @@ func TestNewRegistryPanicsOnDuplicateScheme(t *testing.T) {
 	}()
 	NewRegistry(&fakeStore{scheme: "op"}, &fakeStore{scheme: "op"})
 }
+
+func TestRegistrySupports(t *testing.T) {
+	r := NewRegistry(&fakeStore{scheme: "op"})
+	for ref, want := range map[string]bool{
+		"op://V/i/f":  true,
+		"bw://item":   false,
+		"https://x/y": false,
+		"plain":       false,
+	} {
+		if got := r.Supports(ref); got != want {
+			t.Errorf("Supports(%q) = %v, want %v", ref, got, want)
+		}
+	}
+}

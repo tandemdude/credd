@@ -64,6 +64,12 @@ func NewRegistry(stores ...Store) *Registry {
 	return r
 }
 
+// Supports reports whether ref has the scheme of a registered store.
+func (r *Registry) Supports(ref string) bool {
+	_, err := r.storeFor(ref)
+	return err == nil
+}
+
 func (r *Registry) storeFor(ref string) (Store, error) {
 	scheme, ok := Scheme(ref)
 	if !ok {

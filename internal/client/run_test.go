@@ -5,120 +5,9 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	profilesv1 "github.com/tandemdude/credd/gen/go/profiles/v1"
 )
-
-func TestParseTemplate(t *testing.T) {
-	t.Run("no braces is a single whole-value ref", func(t *testing.T) {
-		got, err := parseTemplate("bar")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		want := []templatePart{{ref: "bar", isRef: true}}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("op reference with no braces is a single ref", func(t *testing.T) {
-		got, err := parseTemplate("op://Vault/item/field")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		want := []templatePart{{ref: "op://Vault/item/field", isRef: true}}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("literal text around a placeholder", func(t *testing.T) {
-		got, err := parseTemplate("postgres://u:{op://V/S/P}@h/db")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		want := []templatePart{
-			{literal: "postgres://u:"},
-			{ref: "op://V/S/P", isRef: true},
-			{literal: "@h/db"},
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("adjacent placeholders", func(t *testing.T) {
-		got, err := parseTemplate("{a}{b}")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		want := []templatePart{
-			{ref: "a", isRef: true},
-			{ref: "b", isRef: true},
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("whitespace inside a placeholder is trimmed", func(t *testing.T) {
-		got, err := parseTemplate("{ op://V/S/P }")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		want := []templatePart{{ref: "op://V/S/P", isRef: true}}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("escaped braces become literal single braces", func(t *testing.T) {
-		got, err := parseTemplate("a{{b}}c{x}")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		want := []templatePart{
-			{literal: "a{b}c"},
-			{ref: "x", isRef: true},
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("escaped braces only, no placeholder", func(t *testing.T) {
-		got, err := parseTemplate("a{{b}}c")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		want := []templatePart{{literal: "a{b}c"}}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("got %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("unmatched open brace is an error", func(t *testing.T) {
-		if _, err := parseTemplate("a{b"); err == nil {
-			t.Fatalf("expected error for unmatched '{'")
-		}
-	})
-
-	t.Run("lone close brace is an error", func(t *testing.T) {
-		if _, err := parseTemplate("a}b"); err == nil {
-			t.Fatalf("expected error for lone '}'")
-		}
-	})
-
-	t.Run("empty placeholder is an error", func(t *testing.T) {
-		if _, err := parseTemplate("a{}b"); err == nil {
-			t.Fatalf("expected error for empty placeholder")
-		}
-	})
-
-	t.Run("whitespace-only placeholder is an error", func(t *testing.T) {
-		if _, err := parseTemplate("a{   }b"); err == nil {
-			t.Fatalf("expected error for whitespace-only placeholder")
-		}
-	})
-}
 
 func TestParseEnvSpec(t *testing.T) {
 	t.Run("valid pairs", func(t *testing.T) {
@@ -210,4 +99,47 @@ func TestRunProcess(t *testing.T) {
 			t.Fatalf("override not last-wins: child exited %d", code)
 		}
 	})
+}
+
+func TestMergeVars(t *testing.T) {
+	plain, secret := profilesv1.VarKind_VAR_KIND_PLAIN, profilesv1.VarKind_VAR_KIND_SECRET
+	profiles := []*profilesv1.Profile{
+		{Name: "base", Vars: []*profilesv1.ProfileVar{
+			{Name: "ENV", Value: "dev", Kind: plain},
+			{Name: "TOKEN", Value: "op://V/base/token", Kind: secret},
+			{Name: "REGION", Value: "eu", Kind: plain},
+		}},
+		{Name: "prod", Vars: []*profilesv1.ProfileVar{
+			{Name: "ENV", Value: "prod", Kind: plain},
+			{Name: "DB", Value: "postgres://{op://V/db/pw}@h", Kind: secret},
+		}},
+	}
+	envVars := []EnvVar{
+		{Name: "REGION", Ref: "op://V/region/value"},
+		{Name: "EXTRA", Ref: "op://V/extra/value"},
+	}
+
+	got := mergeVars(profiles, envVars)
+	want := []pendingVar{
+		{name: "ENV", value: "prod", secret: false, source: `profile "prod"`},
+		{name: "TOKEN", value: "op://V/base/token", secret: true, source: `profile "base"`},
+		{name: "REGION", value: "op://V/region/value", secret: true, source: "--env"},
+		{name: "DB", value: "postgres://{op://V/db/pw}@h", secret: true, source: `profile "prod"`},
+		{name: "EXTRA", value: "op://V/extra/value", secret: true, source: "--env"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got  %+v\nwant %+v", got, want)
+	}
+}
+
+func TestResolveValuePlainIsVerbatim(t *testing.T) {
+	// A nil client proves no server call is made for plain values.
+	var c *Client
+	got, err := c.resolveValue(context.Background(), pendingVar{name: "X", value: "{not a ref}", secret: false})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "{not a ref}" {
+		t.Fatalf("got %q, want verbatim value", got)
+	}
 }

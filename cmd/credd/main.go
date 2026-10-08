@@ -50,6 +50,7 @@ func main() {
 		Flags: clientFlags(defaultConfigPath, &configPath),
 		Commands: []*cli.Command{
 			subcmd.InitCmd,
+			subcmd.ProfileCmd,
 			subcmd.RunCmd,
 			subcmd.SecretCmd,
 			subcmd.ServiceCmd,

@@ -3,17 +3,19 @@ package client
 import (
 	"context"
 
+	profilesv1 "github.com/tandemdude/credd/gen/go/profiles/v1"
 	secretsv1 "github.com/tandemdude/credd/gen/go/secrets/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Client wraps the generated gRPC SecretsClient with a small, intention-
-// revealing surface for the CLI.
+// Client wraps the generated gRPC clients with a small, intention-revealing
+// surface for the CLI.
 type Client struct {
-	conn *grpc.ClientConn
-	rpc  secretsv1.SecretsClient
+	conn     *grpc.ClientConn
+	rpc      secretsv1.SecretsClient
+	profiles profilesv1.ProfilesClient
 }
 
 func New(addr string) (*Client, error) {
@@ -21,7 +23,15 @@ func New(addr string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Client{conn: conn, rpc: secretsv1.NewSecretsClient(conn)}, nil
+	return newFromConn(conn), nil
+}
+
+func newFromConn(conn *grpc.ClientConn) *Client {
+	return &Client{
+		conn:     conn,
+		rpc:      secretsv1.NewSecretsClient(conn),
+		profiles: profilesv1.NewProfilesClient(conn),
+	}
 }
 
 func (c *Client) Close() error {
