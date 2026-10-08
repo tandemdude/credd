@@ -62,7 +62,7 @@ func newIntegrationClient(t *testing.T, store *fakeStore) *Client {
 	registry := secretstore.NewRegistry(store)
 	srv := grpc.NewServer()
 	secretsv1.RegisterSecretsServer(srv, server.NewSecretsServer(registry))
-	profilesv1.RegisterProfilesServer(srv, server.NewProfilesServer(sqlite.NewStore(db.New(conn)).Profiles, registry.Supports))
+	profilesv1.RegisterProfilesServer(srv, server.NewProfilesServer(sqlite.NewStore(conn).Profiles, registry.Supports))
 
 	lis := bufconn.Listen(1 << 20)
 	go srv.Serve(lis)
@@ -129,7 +129,7 @@ func TestRunWithProfiles(t *testing.T) {
 	c := newIntegrationClient(t, store)
 
 	for _, p := range []string{"base", "dev"} {
-		if err := c.CreateProfile(ctx, p); err != nil {
+		if err := c.CreateProfile(ctx, p, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -183,7 +183,7 @@ func TestValidateProfile(t *testing.T) {
 	ctx := context.Background()
 	c := newIntegrationClient(t, &fakeStore{secrets: map[string]string{"op://V/ok": "x"}})
 
-	if err := c.CreateProfile(ctx, "dev"); err != nil {
+	if err := c.CreateProfile(ctx, "dev", ""); err != nil {
 		t.Fatal(err)
 	}
 	mustSet(t, c, "dev", "OK", "op://V/ok")
@@ -204,5 +204,72 @@ func TestValidateProfile(t *testing.T) {
 	}
 	if problems[1].Var != "MIXED" || problems[1].Ref != "bw://item" {
 		t.Errorf("unexpected second problem: %+v", problems[1])
+	}
+}
+
+func TestExportImportRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	c := newIntegrationClient(t, &fakeStore{})
+
+	if err := c.CreateProfile(ctx, "dev", "local development"); err != nil {
+		t.Fatal(err)
+	}
+	mustSet(t, c, "dev", "ENV", "dev")
+	mustSet(t, c, "dev", "TOKEN", "op://V/dev/token")
+
+	exported, err := c.ExportProfile(ctx, "dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf strings.Builder
+	if err := WriteProfileFile(&buf, exported); err != nil {
+		t.Fatal(err)
+	}
+	f, err := ReadProfileFile(strings.NewReader(buf.String()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The original name is taken, so importing without a rename or overwrite fails.
+	if _, err := c.ImportProfile(ctx, f, false); err == nil {
+		t.Fatal("expected import over an existing profile to fail")
+	}
+
+	f.Name = "dev-copy"
+	if _, err := c.ImportProfile(ctx, f, false); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.GetProfile(ctx, "dev-copy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := c.GetProfile(ctx, "dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.GetDescription() != "local development" {
+		t.Errorf("description = %q, want %q", got.GetDescription(), "local development")
+	}
+	// Kinds are re-detected by the server on import, so they must match the original.
+	if len(got.GetVars()) != len(want.GetVars()) {
+		t.Fatalf("vars = %v, want %v", got.GetVars(), want.GetVars())
+	}
+	for i := range want.GetVars() {
+		g, w := got.GetVars()[i], want.GetVars()[i]
+		if g.GetName() != w.GetName() || g.GetValue() != w.GetValue() || g.GetKind() != w.GetKind() {
+			t.Errorf("var %d = %v, want %v", i, g, w)
+		}
+	}
+}
+
+func TestReadProfileFileRejectsBadInput(t *testing.T) {
+	for _, in := range []string{
+		`{"version": 2, "name": "dev", "vars": {}}`,
+		`{"version": 1, "name": "dev", "vars": {}, "extra": true}`,
+		`not json`,
+	} {
+		if _, err := ReadProfileFile(strings.NewReader(in)); err == nil {
+			t.Errorf("ReadProfileFile(%q): expected error", in)
+		}
 	}
 }

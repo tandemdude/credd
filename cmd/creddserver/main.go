@@ -33,7 +33,7 @@ func runServer(ctx context.Context, addr, opAccountName, dbPath string) error {
 	}
 	defer conn.Close()
 
-	store := sqlite.NewStore(db.New(conn))
+	store := sqlite.NewStore(conn)
 
 	secrets := secretstore.NewRegistry(
 		opwd.NewStore(opAccountName),

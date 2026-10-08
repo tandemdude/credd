@@ -17,10 +17,16 @@ var (
 )
 
 type ProfileRepository interface {
-	CreateProfile(ctx context.Context, name string) error
-	ListProfiles(ctx context.Context) ([]string, error)
+	CreateProfile(ctx context.Context, name, description string) error
+	// ListProfiles returns every profile sorted by name, without their vars.
+	ListProfiles(ctx context.Context) ([]models.Profile, error)
 	// GetProfile returns the profile with its vars sorted by name.
 	GetProfile(ctx context.Context, name string) (models.Profile, error)
+	SetProfileDescription(ctx context.Context, name, description string) error
+	// ImportProfile atomically creates profile p with all of its vars. If a
+	// profile with the same name exists it is replaced when overwrite is true,
+	// otherwise ErrAlreadyExists is returned and nothing is changed.
+	ImportProfile(ctx context.Context, p models.Profile, overwrite bool) error
 	// SetProfileVar creates or replaces the var v.Name within profile.
 	SetProfileVar(ctx context.Context, profile string, v models.ProfileVar) error
 	UnsetProfileVar(ctx context.Context, profile, name string) error

@@ -2,14 +2,20 @@
 -- resolved from an external secret manager (e.g. 1Password).
 
 -- name: CreateProfile :execrows
-INSERT INTO profile (name) VALUES (?)
+INSERT INTO profile (name, description) VALUES (?, ?)
 ON CONFLICT (name) DO NOTHING;
 
--- name: ListProfileNames :many
-SELECT name FROM profile ORDER BY name;
+-- name: ListProfiles :many
+SELECT name, description FROM profile ORDER BY name;
 
 -- name: GetProfileID :one
 SELECT id FROM profile WHERE name = ?;
+
+-- name: GetProfile :one
+SELECT id, description FROM profile WHERE name = ?;
+
+-- name: UpdateProfileDescription :execrows
+UPDATE profile SET description = ? WHERE name = ?;
 
 -- name: DeleteProfile :execrows
 DELETE FROM profile WHERE name = ?;

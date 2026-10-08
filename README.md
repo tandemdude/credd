@@ -101,7 +101,7 @@ repeating `--env` flags. A profile var can hold either a secret or a plain value
 Profiles never store secret values; only the references are stored.
 
 ```bash
-credd profile create dev
+credd profile create dev --description "local development against the dev cluster"
 credd profile set dev ENV=dev SENTRY_ACCESS_TOKEN=op://Private/Sentry/AccessToken
 credd profile show dev       # list vars, their kind, and their (unresolved) values
 credd profile validate dev   # check every referenced secret exists, without fetching any values
@@ -115,7 +115,20 @@ can still be used alongside profiles, and always take precedence over them.
 credd run --profile base --profile dev --env EXTRA=op://Vault/Secret/Value -- some-command
 ```
 
-The other `credd profile` subcommands are `list`, `unset <profile> NAME...` and `delete <profile>`.
+Profiles can be shared as JSON files. An export contains the profile's name, description and vars, with
+secret references exported as-is (never their values), so the recipient needs access to the same secrets.
+On import, var kinds are re-detected against the importer's configured secret stores.
+
+```bash
+credd profile export dev -o dev.json             # or omit -o to write to stdout
+credd profile import dev.json                    # keeps the name in the file; fails if it is taken
+credd profile import dev.json --name dev-alice   # import under a different name
+credd profile import dev.json --overwrite        # replace an existing profile of the same name
+credd profile import - < dev.json                # read from stdin
+```
+
+The other `credd profile` subcommands are `list` (names and descriptions), `describe <profile> <description>`,
+`unset <profile> NAME...` and `delete <profile>`.
 
 ### Secrets
 

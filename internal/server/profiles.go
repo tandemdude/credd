@@ -5,6 +5,10 @@ import (
 	"errors"
 	"log/slog"
 	"regexp"
+	"slices"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/tandemdude/credd/internal/domain/models"
 	"github.com/tandemdude/credd/internal/domain/repository"
@@ -40,6 +44,21 @@ var (
 func validateProfileName(name string) error {
 	if !profileNameRe.MatchString(name) {
 		return status.Errorf(codes.InvalidArgument, "invalid profile name %q: must match [0-9a-zA-Z_-]+", name)
+	}
+	return nil
+}
+
+// maxDescriptionLen is the maximum length, in characters, of a profile description.
+const maxDescriptionLen = 200
+
+// validateDescription requires descriptions to be short and fit on one line,
+// so they display cleanly in `credd profile list`.
+func validateDescription(description string) error {
+	if utf8.RuneCountInString(description) > maxDescriptionLen {
+		return status.Errorf(codes.InvalidArgument, "invalid description: must be at most %d characters", maxDescriptionLen)
+	}
+	if strings.ContainsFunc(description, unicode.IsControl) {
+		return status.Error(codes.InvalidArgument, "invalid description: must be a single line without control characters")
 	}
 	return nil
 }
@@ -89,12 +108,23 @@ func toProtoVar(v models.ProfileVar) *profilesv1.ProfileVar {
 	return &profilesv1.ProfileVar{Name: v.Name, Value: v.Value, Kind: kind}
 }
 
+func toProtoProfile(p models.Profile) *profilesv1.Profile {
+	vars := make([]*profilesv1.ProfileVar, len(p.Vars))
+	for i, v := range p.Vars {
+		vars[i] = toProtoVar(v)
+	}
+	return &profilesv1.Profile{Name: p.Name, Description: p.Description, Vars: vars}
+}
+
 func (s *ProfilesServer) CreateProfile(ctx context.Context, req *profilesv1.CreateProfileRequest) (*profilesv1.CreateProfileResponse, error) {
 	slog.InfoContext(ctx, "ProfilesServer.CreateProfile", "profile", req.GetName())
 	if err := validateProfileName(req.GetName()); err != nil {
 		return nil, err
 	}
-	if err := s.profileRepo.CreateProfile(ctx, req.GetName()); err != nil {
+	if err := validateDescription(req.GetDescription()); err != nil {
+		return nil, err
+	}
+	if err := s.profileRepo.CreateProfile(ctx, req.GetName(), req.GetDescription()); err != nil {
 		return nil, repoErrToStatus(err)
 	}
 	return &profilesv1.CreateProfileResponse{}, nil
@@ -102,11 +132,16 @@ func (s *ProfilesServer) CreateProfile(ctx context.Context, req *profilesv1.Crea
 
 func (s *ProfilesServer) ListProfiles(ctx context.Context, _ *profilesv1.ListProfilesRequest) (*profilesv1.ListProfilesResponse, error) {
 	slog.InfoContext(ctx, "ProfilesServer.ListProfiles")
-	names, err := s.profileRepo.ListProfiles(ctx)
+	profiles, err := s.profileRepo.ListProfiles(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &profilesv1.ListProfilesResponse{Names: names}, nil
+
+	summaries := make([]*profilesv1.ProfileSummary, len(profiles))
+	for i, p := range profiles {
+		summaries[i] = &profilesv1.ProfileSummary{Name: p.Name, Description: p.Description}
+	}
+	return &profilesv1.ListProfilesResponse{Profiles: summaries}, nil
 }
 
 func (s *ProfilesServer) GetProfile(ctx context.Context, req *profilesv1.GetProfileRequest) (*profilesv1.GetProfileResponse, error) {
@@ -116,11 +151,18 @@ func (s *ProfilesServer) GetProfile(ctx context.Context, req *profilesv1.GetProf
 		return nil, repoErrToStatus(err)
 	}
 
-	vars := make([]*profilesv1.ProfileVar, len(p.Vars))
-	for i, v := range p.Vars {
-		vars[i] = toProtoVar(v)
+	return &profilesv1.GetProfileResponse{Profile: toProtoProfile(p)}, nil
+}
+
+func (s *ProfilesServer) SetProfileDescription(ctx context.Context, req *profilesv1.SetProfileDescriptionRequest) (*profilesv1.SetProfileDescriptionResponse, error) {
+	slog.InfoContext(ctx, "ProfilesServer.SetProfileDescription", "profile", req.GetName())
+	if err := validateDescription(req.GetDescription()); err != nil {
+		return nil, err
 	}
-	return &profilesv1.GetProfileResponse{Profile: &profilesv1.Profile{Name: p.Name, Vars: vars}}, nil
+	if err := s.profileRepo.SetProfileDescription(ctx, req.GetName(), req.GetDescription()); err != nil {
+		return nil, repoErrToStatus(err)
+	}
+	return &profilesv1.SetProfileDescriptionResponse{}, nil
 }
 
 func (s *ProfilesServer) SetProfileVar(ctx context.Context, req *profilesv1.SetProfileVarRequest) (*profilesv1.SetProfileVarResponse, error) {
@@ -157,4 +199,36 @@ func (s *ProfilesServer) DeleteProfile(ctx context.Context, req *profilesv1.Dele
 		return nil, repoErrToStatus(err)
 	}
 	return &profilesv1.DeleteProfileResponse{}, nil
+}
+
+func (s *ProfilesServer) ImportProfile(ctx context.Context, req *profilesv1.ImportProfileRequest) (*profilesv1.ImportProfileResponse, error) {
+	in := req.GetProfile()
+	slog.InfoContext(ctx, "ProfilesServer.ImportProfile", "profile", in.GetName(), "vars", len(in.GetVars()), "overwrite", req.GetOverwrite())
+	if err := validateProfileName(in.GetName()); err != nil {
+		return nil, err
+	}
+	if err := validateDescription(in.GetDescription()); err != nil {
+		return nil, err
+	}
+
+	p := models.Profile{Name: in.GetName(), Description: in.GetDescription(), Vars: make([]models.ProfileVar, len(in.GetVars()))}
+	seen := make(map[string]bool, len(in.GetVars()))
+	for i, v := range in.GetVars() {
+		if err := validateVarName(v.GetName()); err != nil {
+			return nil, err
+		}
+		if seen[v.GetName()] {
+			return nil, status.Errorf(codes.InvalidArgument, "duplicate env var %q", v.GetName())
+		}
+		seen[v.GetName()] = true
+		// Kinds are never trusted from the request: an imported file may come
+		// from someone else, so classify values exactly as SetProfileVar does.
+		p.Vars[i] = models.ProfileVar{Name: v.GetName(), Value: v.GetValue(), Kind: detectKind(v.GetValue(), s.isSecretRef)}
+	}
+	slices.SortFunc(p.Vars, func(a, b models.ProfileVar) int { return strings.Compare(a.Name, b.Name) })
+
+	if err := s.profileRepo.ImportProfile(ctx, p, req.GetOverwrite()); err != nil {
+		return nil, repoErrToStatus(err)
+	}
+	return &profilesv1.ImportProfileResponse{Profile: toProtoProfile(p)}, nil
 }

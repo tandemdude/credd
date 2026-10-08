@@ -20,10 +20,18 @@ message ProfileVar {
 message Profile {
   string name = 1;
   repeated ProfileVar vars = 2;
+  string description = 3;
+}
+
+// ProfileSummary is a profile without its vars.
+message ProfileSummary {
+  string name = 1;
+  string description = 2;
 }
 
 message CreateProfileRequest {
   string name = 1;
+  string description = 2;
 }
 
 message CreateProfileResponse {}
@@ -31,7 +39,9 @@ message CreateProfileResponse {}
 message ListProfilesRequest {}
 
 message ListProfilesResponse {
-  repeated string names = 1;
+  reserved 1;
+  reserved "names";
+  repeated ProfileSummary profiles = 2;
 }
 
 message GetProfileRequest {
@@ -59,6 +69,26 @@ message UnsetProfileVarRequest {
 
 message UnsetProfileVarResponse {}
 
+message SetProfileDescriptionRequest {
+  string name = 1;
+  string description = 2;
+}
+
+message SetProfileDescriptionResponse {}
+
+// ImportProfileRequest creates a profile, with all of its vars, in one atomic
+// operation. Var kinds in the request are ignored and re-detected by the server.
+message ImportProfileRequest {
+  Profile profile = 1;
+  // Replace any existing profile with the same name instead of failing with
+  // ALREADY_EXISTS.
+  bool overwrite = 2;
+}
+
+message ImportProfileResponse {
+  Profile profile = 1;
+}
+
 message DeleteProfileRequest {
   string name = 1;
 }
@@ -71,8 +101,12 @@ service Profiles {
   rpc ListProfiles(ListProfilesRequest) returns (ListProfilesResponse);
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
 
+  rpc SetProfileDescription(SetProfileDescriptionRequest) returns (SetProfileDescriptionResponse);
+
   rpc SetProfileVar(SetProfileVarRequest) returns (SetProfileVarResponse);
   rpc UnsetProfileVar(UnsetProfileVarRequest) returns (UnsetProfileVarResponse);
 
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
+
+  rpc ImportProfile(ImportProfileRequest) returns (ImportProfileResponse);
 }

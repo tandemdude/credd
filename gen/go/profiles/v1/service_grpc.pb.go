@@ -19,12 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Profiles_CreateProfile_FullMethodName   = "/credd.profiles.v1.Profiles/CreateProfile"
-	Profiles_ListProfiles_FullMethodName    = "/credd.profiles.v1.Profiles/ListProfiles"
-	Profiles_GetProfile_FullMethodName      = "/credd.profiles.v1.Profiles/GetProfile"
-	Profiles_SetProfileVar_FullMethodName   = "/credd.profiles.v1.Profiles/SetProfileVar"
-	Profiles_UnsetProfileVar_FullMethodName = "/credd.profiles.v1.Profiles/UnsetProfileVar"
-	Profiles_DeleteProfile_FullMethodName   = "/credd.profiles.v1.Profiles/DeleteProfile"
+	Profiles_CreateProfile_FullMethodName         = "/credd.profiles.v1.Profiles/CreateProfile"
+	Profiles_ListProfiles_FullMethodName          = "/credd.profiles.v1.Profiles/ListProfiles"
+	Profiles_GetProfile_FullMethodName            = "/credd.profiles.v1.Profiles/GetProfile"
+	Profiles_SetProfileDescription_FullMethodName = "/credd.profiles.v1.Profiles/SetProfileDescription"
+	Profiles_SetProfileVar_FullMethodName         = "/credd.profiles.v1.Profiles/SetProfileVar"
+	Profiles_UnsetProfileVar_FullMethodName       = "/credd.profiles.v1.Profiles/UnsetProfileVar"
+	Profiles_DeleteProfile_FullMethodName         = "/credd.profiles.v1.Profiles/DeleteProfile"
+	Profiles_ImportProfile_FullMethodName         = "/credd.profiles.v1.Profiles/ImportProfile"
 )
 
 // ProfilesClient is the client API for Profiles service.
@@ -34,9 +36,11 @@ type ProfilesClient interface {
 	CreateProfile(ctx context.Context, in *CreateProfileRequest, opts ...grpc.CallOption) (*CreateProfileResponse, error)
 	ListProfiles(ctx context.Context, in *ListProfilesRequest, opts ...grpc.CallOption) (*ListProfilesResponse, error)
 	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
+	SetProfileDescription(ctx context.Context, in *SetProfileDescriptionRequest, opts ...grpc.CallOption) (*SetProfileDescriptionResponse, error)
 	SetProfileVar(ctx context.Context, in *SetProfileVarRequest, opts ...grpc.CallOption) (*SetProfileVarResponse, error)
 	UnsetProfileVar(ctx context.Context, in *UnsetProfileVarRequest, opts ...grpc.CallOption) (*UnsetProfileVarResponse, error)
 	DeleteProfile(ctx context.Context, in *DeleteProfileRequest, opts ...grpc.CallOption) (*DeleteProfileResponse, error)
+	ImportProfile(ctx context.Context, in *ImportProfileRequest, opts ...grpc.CallOption) (*ImportProfileResponse, error)
 }
 
 type profilesClient struct {
@@ -77,6 +81,16 @@ func (c *profilesClient) GetProfile(ctx context.Context, in *GetProfileRequest, 
 	return out, nil
 }
 
+func (c *profilesClient) SetProfileDescription(ctx context.Context, in *SetProfileDescriptionRequest, opts ...grpc.CallOption) (*SetProfileDescriptionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetProfileDescriptionResponse)
+	err := c.cc.Invoke(ctx, Profiles_SetProfileDescription_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *profilesClient) SetProfileVar(ctx context.Context, in *SetProfileVarRequest, opts ...grpc.CallOption) (*SetProfileVarResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetProfileVarResponse)
@@ -107,6 +121,16 @@ func (c *profilesClient) DeleteProfile(ctx context.Context, in *DeleteProfileReq
 	return out, nil
 }
 
+func (c *profilesClient) ImportProfile(ctx context.Context, in *ImportProfileRequest, opts ...grpc.CallOption) (*ImportProfileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportProfileResponse)
+	err := c.cc.Invoke(ctx, Profiles_ImportProfile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProfilesServer is the server API for Profiles service.
 // All implementations must embed UnimplementedProfilesServer
 // for forward compatibility.
@@ -114,9 +138,11 @@ type ProfilesServer interface {
 	CreateProfile(context.Context, *CreateProfileRequest) (*CreateProfileResponse, error)
 	ListProfiles(context.Context, *ListProfilesRequest) (*ListProfilesResponse, error)
 	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
+	SetProfileDescription(context.Context, *SetProfileDescriptionRequest) (*SetProfileDescriptionResponse, error)
 	SetProfileVar(context.Context, *SetProfileVarRequest) (*SetProfileVarResponse, error)
 	UnsetProfileVar(context.Context, *UnsetProfileVarRequest) (*UnsetProfileVarResponse, error)
 	DeleteProfile(context.Context, *DeleteProfileRequest) (*DeleteProfileResponse, error)
+	ImportProfile(context.Context, *ImportProfileRequest) (*ImportProfileResponse, error)
 	mustEmbedUnimplementedProfilesServer()
 }
 
@@ -136,6 +162,9 @@ func (UnimplementedProfilesServer) ListProfiles(context.Context, *ListProfilesRe
 func (UnimplementedProfilesServer) GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProfile not implemented")
 }
+func (UnimplementedProfilesServer) SetProfileDescription(context.Context, *SetProfileDescriptionRequest) (*SetProfileDescriptionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetProfileDescription not implemented")
+}
 func (UnimplementedProfilesServer) SetProfileVar(context.Context, *SetProfileVarRequest) (*SetProfileVarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetProfileVar not implemented")
 }
@@ -144,6 +173,9 @@ func (UnimplementedProfilesServer) UnsetProfileVar(context.Context, *UnsetProfil
 }
 func (UnimplementedProfilesServer) DeleteProfile(context.Context, *DeleteProfileRequest) (*DeleteProfileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteProfile not implemented")
+}
+func (UnimplementedProfilesServer) ImportProfile(context.Context, *ImportProfileRequest) (*ImportProfileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ImportProfile not implemented")
 }
 func (UnimplementedProfilesServer) mustEmbedUnimplementedProfilesServer() {}
 func (UnimplementedProfilesServer) testEmbeddedByValue()                  {}
@@ -220,6 +252,24 @@ func _Profiles_GetProfile_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Profiles_SetProfileDescription_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetProfileDescriptionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProfilesServer).SetProfileDescription(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Profiles_SetProfileDescription_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProfilesServer).SetProfileDescription(ctx, req.(*SetProfileDescriptionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Profiles_SetProfileVar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetProfileVarRequest)
 	if err := dec(in); err != nil {
@@ -274,6 +324,24 @@ func _Profiles_DeleteProfile_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Profiles_ImportProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportProfileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProfilesServer).ImportProfile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Profiles_ImportProfile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProfilesServer).ImportProfile(ctx, req.(*ImportProfileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Profiles_ServiceDesc is the grpc.ServiceDesc for Profiles service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -294,6 +362,10 @@ var Profiles_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Profiles_GetProfile_Handler,
 		},
 		{
+			MethodName: "SetProfileDescription",
+			Handler:    _Profiles_SetProfileDescription_Handler,
+		},
+		{
 			MethodName: "SetProfileVar",
 			Handler:    _Profiles_SetProfileVar_Handler,
 		},
@@ -304,6 +376,10 @@ var Profiles_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteProfile",
 			Handler:    _Profiles_DeleteProfile_Handler,
+		},
+		{
+			MethodName: "ImportProfile",
+			Handler:    _Profiles_ImportProfile_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -5,8 +5,9 @@
 package db
 
 type Profile struct {
-	ID   int64
-	Name string
+	ID          int64
+	Name        string
+	Description string
 }
 
 type ProfileVar struct {

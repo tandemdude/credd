@@ -20,6 +20,7 @@ type ProfileVar struct {
 
 // Profile is a named collection of env vars.
 type Profile struct {
-	Name string
-	Vars []ProfileVar
+	Name        string
+	Description string
+	Vars        []ProfileVar
 }

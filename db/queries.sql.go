@@ -11,14 +11,19 @@ import (
 
 const createProfile = `-- name: CreateProfile :execrows
 
-INSERT INTO profile (name) VALUES (?)
+INSERT INTO profile (name, description) VALUES (?, ?)
 ON CONFLICT (name) DO NOTHING
 `
 
+type CreateProfileParams struct {
+	Name        string
+	Description string
+}
+
 // Note: secret values are never stored in the database; they are always
 // resolved from an external secret manager (e.g. 1Password).
-func (q *Queries) CreateProfile(ctx context.Context, name string) (int64, error) {
-	result, err := q.db.ExecContext(ctx, createProfile, name)
+func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, createProfile, arg.Name, arg.Description)
 	if err != nil {
 		return 0, err
 	}
@@ -54,6 +59,22 @@ func (q *Queries) DeleteProfileVar(ctx context.Context, arg DeleteProfileVarPara
 	return result.RowsAffected()
 }
 
+const getProfile = `-- name: GetProfile :one
+SELECT id, description FROM profile WHERE name = ?
+`
+
+type GetProfileRow struct {
+	ID          int64
+	Description string
+}
+
+func (q *Queries) GetProfile(ctx context.Context, name string) (GetProfileRow, error) {
+	row := q.db.QueryRowContext(ctx, getProfile, name)
+	var i GetProfileRow
+	err := row.Scan(&i.ID, &i.Description)
+	return i, err
+}
+
 const getProfileID = `-- name: GetProfileID :one
 SELECT id FROM profile WHERE name = ?
 `
@@ -63,33 +84,6 @@ func (q *Queries) GetProfileID(ctx context.Context, name string) (int64, error) 
 	var id int64
 	err := row.Scan(&id)
 	return id, err
-}
-
-const listProfileNames = `-- name: ListProfileNames :many
-SELECT name FROM profile ORDER BY name
-`
-
-func (q *Queries) ListProfileNames(ctx context.Context) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listProfileNames)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-		items = append(items, name)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listProfileVars = `-- name: ListProfileVars :many
@@ -123,6 +117,55 @@ func (q *Queries) ListProfileVars(ctx context.Context, profileID int64) ([]ListP
 		return nil, err
 	}
 	return items, nil
+}
+
+const listProfiles = `-- name: ListProfiles :many
+SELECT name, description FROM profile ORDER BY name
+`
+
+type ListProfilesRow struct {
+	Name        string
+	Description string
+}
+
+func (q *Queries) ListProfiles(ctx context.Context) ([]ListProfilesRow, error) {
+	rows, err := q.db.QueryContext(ctx, listProfiles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProfilesRow
+	for rows.Next() {
+		var i ListProfilesRow
+		if err := rows.Scan(&i.Name, &i.Description); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateProfileDescription = `-- name: UpdateProfileDescription :execrows
+UPDATE profile SET description = ? WHERE name = ?
+`
+
+type UpdateProfileDescriptionParams struct {
+	Description string
+	Name        string
+}
+
+func (q *Queries) UpdateProfileDescription(ctx context.Context, arg UpdateProfileDescriptionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateProfileDescription, arg.Description, arg.Name)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const upsertProfileVar = `-- name: UpsertProfileVar :exec

@@ -21,7 +21,7 @@ func newTestRepo(t *testing.T) repository.ProfileRepository {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close() })
-	return NewProfileRepository(db.New(conn))
+	return NewProfileRepository(conn)
 }
 
 func TestProfileLifecycle(t *testing.T) {
@@ -30,22 +30,26 @@ func TestProfileLifecycle(t *testing.T) {
 
 	// "dev" is created last so that, once deleted, recreating it reuses the
 	// same rowid; that makes the cascade check below meaningful.
-	if err := r.CreateProfile(ctx, "base"); err != nil {
+	if err := r.CreateProfile(ctx, "base", "shared vars"); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.CreateProfile(ctx, "dev"); err != nil {
+	if err := r.CreateProfile(ctx, "dev", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.CreateProfile(ctx, "dev"); !errors.Is(err, repository.ErrAlreadyExists) {
+	if err := r.CreateProfile(ctx, "dev", ""); !errors.Is(err, repository.ErrAlreadyExists) {
 		t.Fatalf("duplicate create err = %v, want ErrAlreadyExists", err)
 	}
 
-	names, err := r.ListProfiles(ctx)
+	profiles, err := r.ListProfiles(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(names, []string{"base", "dev"}) {
-		t.Fatalf("ListProfiles = %v", names)
+	if want := []models.Profile{{Name: "base", Description: "shared vars"}, {Name: "dev"}}; !reflect.DeepEqual(profiles, want) {
+		t.Fatalf("ListProfiles = %+v, want %+v", profiles, want)
+	}
+
+	if err := r.SetProfileDescription(ctx, "dev", "local development"); err != nil {
+		t.Fatal(err)
 	}
 
 	set := func(v models.ProfileVar) {
@@ -62,7 +66,7 @@ func TestProfileLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := models.Profile{Name: "dev", Vars: []models.ProfileVar{
+	want := models.Profile{Name: "dev", Description: "local development", Vars: []models.ProfileVar{
 		{Name: "ENV", Value: "staging", Kind: models.VarKindPlain},
 		{Name: "TOKEN", Value: "op://V/i/f", Kind: models.VarKindSecret},
 	}}
@@ -85,7 +89,7 @@ func TestProfileLifecycle(t *testing.T) {
 	}
 
 	// Recreating the profile must not resurrect its old vars (ON DELETE CASCADE).
-	if err := r.CreateProfile(ctx, "dev"); err != nil {
+	if err := r.CreateProfile(ctx, "dev", ""); err != nil {
 		t.Fatal(err)
 	}
 	p, err = r.GetProfile(ctx, "dev")
@@ -112,5 +116,58 @@ func TestMissingProfileIsNotFound(t *testing.T) {
 	}
 	if _, err := r.GetProfile(ctx, "nope"); !errors.Is(err, repository.ErrNotFound) {
 		t.Errorf("GetProfile err = %v, want ErrNotFound", err)
+	}
+	if err := r.SetProfileDescription(ctx, "nope", "x"); !errors.Is(err, repository.ErrNotFound) {
+		t.Errorf("SetProfileDescription err = %v, want ErrNotFound", err)
+	}
+}
+
+func TestImportProfile(t *testing.T) {
+	ctx := context.Background()
+	r := newTestRepo(t)
+
+	if err := r.CreateProfile(ctx, "dev", "old"); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.SetProfileVar(ctx, "dev", models.ProfileVar{Name: "OLD", Value: "x", Kind: models.VarKindPlain}); err != nil {
+		t.Fatal(err)
+	}
+
+	imported := models.Profile{Name: "dev", Description: "new", Vars: []models.ProfileVar{
+		{Name: "ENV", Value: "dev", Kind: models.VarKindPlain},
+		{Name: "TOKEN", Value: "op://V/i/f", Kind: models.VarKindSecret},
+	}}
+
+	// Without overwrite the existing profile is left untouched.
+	if err := r.ImportProfile(ctx, imported, false); !errors.Is(err, repository.ErrAlreadyExists) {
+		t.Fatalf("import err = %v, want ErrAlreadyExists", err)
+	}
+	p, err := r.GetProfile(ctx, "dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Description != "old" || len(p.Vars) != 1 || p.Vars[0].Name != "OLD" {
+		t.Fatalf("profile changed by failed import: %+v", p)
+	}
+
+	// With overwrite it is fully replaced, including dropping old vars.
+	if err := r.ImportProfile(ctx, imported, true); err != nil {
+		t.Fatal(err)
+	}
+	p, err = r.GetProfile(ctx, "dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(p, imported) {
+		t.Fatalf("GetProfile = %+v, want %+v", p, imported)
+	}
+
+	// Importing under a new name creates it.
+	imported.Name = "other"
+	if err := r.ImportProfile(ctx, imported, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.GetProfile(ctx, "other"); err != nil {
+		t.Fatal(err)
 	}
 }

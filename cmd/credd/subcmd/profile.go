@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 
 	profilesv1 "github.com/tandemdude/credd/gen/go/profiles/v1"
+	"github.com/tandemdude/credd/internal/client"
 
 	"github.com/urfave/cli/v3"
 )
@@ -24,6 +25,13 @@ func kindName(k profilesv1.VarKind) string {
 	}
 }
 
+// descriptionFlag sets a profile's short description.
+var descriptionFlag = &cli.StringFlag{
+	Name:    "description",
+	Aliases: []string{"d"},
+	Usage:   "short, single-line description of what the profile is for",
+}
+
 // ProfileCmd manages profiles: named collections of env vars for `credd run`.
 var ProfileCmd = &cli.Command{
 	Name:  "profile",
@@ -32,10 +40,11 @@ var ProfileCmd = &cli.Command{
 		{
 			Name:      "create",
 			Usage:     "create an empty profile",
-			ArgsUsage: "<profile>",
+			ArgsUsage: "[--description TEXT] <profile>",
+			Flags:     []cli.Flag{descriptionFlag},
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				if cmd.NArg() != 1 {
-					return cli.Exit("usage: credd profile create <profile>", 2)
+					return cli.Exit("usage: credd profile create [--description TEXT] <profile>", 2)
 				}
 				c, err := dial(cmd)
 				if err != nil {
@@ -44,7 +53,7 @@ var ProfileCmd = &cli.Command{
 				defer c.Close()
 
 				name := cmd.Args().Get(0)
-				if err := c.CreateProfile(ctx, name); err != nil {
+				if err := c.CreateProfile(ctx, name, cmd.String("description")); err != nil {
 					return err
 				}
 				fmt.Fprintf(os.Stderr, "created profile %q\n", name)
@@ -53,7 +62,7 @@ var ProfileCmd = &cli.Command{
 		},
 		{
 			Name:  "list",
-			Usage: "list profile names",
+			Usage: "list profiles and their descriptions",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				c, err := dial(cmd)
 				if err != nil {
@@ -61,13 +70,36 @@ var ProfileCmd = &cli.Command{
 				}
 				defer c.Close()
 
-				names, err := c.ListProfiles(ctx)
+				profiles, err := c.ListProfiles(ctx)
 				if err != nil {
 					return err
 				}
-				for _, n := range names {
-					fmt.Fprintln(os.Stdout, n)
+				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+				for _, p := range profiles {
+					fmt.Fprintf(w, "%s\t%s\n", p.GetName(), p.GetDescription())
 				}
+				return w.Flush()
+			},
+		},
+		{
+			Name:      "describe",
+			Usage:     "set a profile's description (an empty description clears it)",
+			ArgsUsage: "<profile> <description>",
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				if cmd.NArg() != 2 {
+					return cli.Exit("usage: credd profile describe <profile> <description>", 2)
+				}
+				c, err := dial(cmd)
+				if err != nil {
+					return err
+				}
+				defer c.Close()
+
+				name := cmd.Args().Get(0)
+				if err := c.SetProfileDescription(ctx, name, cmd.Args().Get(1)); err != nil {
+					return err
+				}
+				fmt.Fprintf(os.Stderr, "updated description of profile %q\n", name)
 				return nil
 			},
 		},
@@ -88,6 +120,9 @@ var ProfileCmd = &cli.Command{
 				p, err := c.GetProfile(ctx, cmd.Args().Get(0))
 				if err != nil {
 					return err
+				}
+				if d := p.GetDescription(); d != "" {
+					fmt.Fprintf(os.Stdout, "%s\n\n", d)
 				}
 				w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 				for _, v := range p.GetVars() {
@@ -176,6 +211,112 @@ var ProfileCmd = &cli.Command{
 					return err
 				}
 				fmt.Fprintf(os.Stderr, "deleted profile %q\n", name)
+				return nil
+			},
+		},
+		{
+			Name:      "export",
+			Usage:     "export a profile as JSON for sharing (secret references are exported, never their values)",
+			ArgsUsage: "[--output FILE] <profile>",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "output",
+					Aliases: []string{"o"},
+					Usage:   "file to write to (default: stdout)",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				if cmd.NArg() != 1 {
+					return cli.Exit("usage: credd profile export [--output FILE] <profile>", 2)
+				}
+				c, err := dial(cmd)
+				if err != nil {
+					return err
+				}
+				defer c.Close()
+
+				name := cmd.Args().Get(0)
+				f, err := c.ExportProfile(ctx, name)
+				if err != nil {
+					return err
+				}
+
+				out := cmd.String("output")
+				if out == "" || out == "-" {
+					return client.WriteProfileFile(os.Stdout, f)
+				}
+				file, err := os.Create(out)
+				if err != nil {
+					return err
+				}
+				if err := client.WriteProfileFile(file, f); err != nil {
+					file.Close()
+					return err
+				}
+				if err := file.Close(); err != nil {
+					return err
+				}
+				fmt.Fprintf(os.Stderr, "exported profile %q to %s\n", name, out)
+				return nil
+			},
+		},
+		{
+			Name:      "import",
+			Usage:     "create a profile from a JSON file produced by export (use - to read from stdin)",
+			ArgsUsage: "[--name NAME] [--description TEXT] [--overwrite] <file>",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:    "name",
+					Aliases: []string{"n"},
+					Usage:   "import under this name instead of the one in the file",
+				},
+				&cli.StringFlag{
+					Name:    descriptionFlag.Name,
+					Aliases: descriptionFlag.Aliases,
+					Usage:   "use this description instead of the one in the file",
+				},
+				&cli.BoolFlag{
+					Name:  "overwrite",
+					Usage: "replace an existing profile with the same name (its vars are discarded)",
+				},
+			},
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				if cmd.NArg() != 1 {
+					return cli.Exit("usage: credd profile import [--name NAME] [--description TEXT] [--overwrite] <file>", 2)
+				}
+
+				path := cmd.Args().Get(0)
+				in := os.Stdin
+				if path != "-" {
+					file, err := os.Open(path)
+					if err != nil {
+						return err
+					}
+					defer file.Close()
+					in = file
+				}
+				f, err := client.ReadProfileFile(in)
+				if err != nil {
+					return err
+				}
+				if cmd.IsSet("name") {
+					f.Name = cmd.String("name")
+				}
+				if cmd.IsSet("description") {
+					f.Description = cmd.String("description")
+				}
+
+				c, err := dial(cmd)
+				if err != nil {
+					return err
+				}
+				defer c.Close()
+
+				p, err := c.ImportProfile(ctx, f, cmd.Bool("overwrite"))
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(os.Stderr, "imported profile %q with %d var(s)\n", p.GetName(), len(p.GetVars()))
 				return nil
 			},
 		},

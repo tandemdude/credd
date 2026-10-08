@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -43,7 +44,12 @@ func TestDetectKind(t *testing.T) {
 // Unimplemented methods are provided by the embedded interface (they panic if called).
 type fakeProfileRepo struct {
 	repository.ProfileRepository
-	setVar func(ctx context.Context, profile string, v models.ProfileVar) error
+	setVar        func(ctx context.Context, profile string, v models.ProfileVar) error
+	importProfile func(ctx context.Context, p models.Profile, overwrite bool) error
+}
+
+func (f *fakeProfileRepo) ImportProfile(ctx context.Context, p models.Profile, overwrite bool) error {
+	return f.importProfile(ctx, p, overwrite)
 }
 
 func (f *fakeProfileRepo) SetProfileVar(ctx context.Context, profile string, v models.ProfileVar) error {
@@ -108,6 +114,69 @@ func TestCreateProfileRejectsInvalidName(t *testing.T) {
 		_, err := srv.CreateProfile(context.Background(), &profilesv1.CreateProfileRequest{Name: name})
 		if status.Code(err) != codes.InvalidArgument {
 			t.Errorf("name %q: code = %v, want InvalidArgument", name, status.Code(err))
+		}
+	}
+}
+
+func TestCreateProfileRejectsInvalidDescription(t *testing.T) {
+	srv := NewProfilesServer(&fakeProfileRepo{}, isOpRef)
+
+	for _, d := range []string{"two\nlines", "tab\there", strings.Repeat("x", maxDescriptionLen+1)} {
+		_, err := srv.CreateProfile(context.Background(), &profilesv1.CreateProfileRequest{Name: "dev", Description: d})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Errorf("description %q: code = %v, want InvalidArgument", d, status.Code(err))
+		}
+	}
+}
+
+func TestImportProfileDetectsKindsAndSorts(t *testing.T) {
+	var stored models.Profile
+	var storedOverwrite bool
+	srv := NewProfilesServer(&fakeProfileRepo{
+		importProfile: func(_ context.Context, p models.Profile, overwrite bool) error {
+			stored, storedOverwrite = p, overwrite
+			return nil
+		},
+	}, isOpRef)
+
+	resp, err := srv.ImportProfile(context.Background(), &profilesv1.ImportProfileRequest{
+		Profile: &profilesv1.Profile{Name: "dev", Description: "d", Vars: []*profilesv1.ProfileVar{
+			// The client-supplied kind is wrong on purpose; it must be ignored.
+			{Name: "TOKEN", Value: "op://V/i/f", Kind: profilesv1.VarKind_VAR_KIND_PLAIN},
+			{Name: "ENV", Value: "dev", Kind: profilesv1.VarKind_VAR_KIND_SECRET},
+		}},
+		Overwrite: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := models.Profile{Name: "dev", Description: "d", Vars: []models.ProfileVar{
+		{Name: "ENV", Value: "dev", Kind: models.VarKindPlain},
+		{Name: "TOKEN", Value: "op://V/i/f", Kind: models.VarKindSecret},
+	}}
+	if !reflect.DeepEqual(stored, want) {
+		t.Fatalf("stored = %+v, want %+v", stored, want)
+	}
+	if !storedOverwrite {
+		t.Fatal("overwrite was not passed through")
+	}
+	if got := resp.GetProfile().GetVars()[1].GetKind(); got != profilesv1.VarKind_VAR_KIND_SECRET {
+		t.Fatalf("response TOKEN kind = %v, want secret", got)
+	}
+}
+
+func TestImportProfileRejectsInvalidInput(t *testing.T) {
+	srv := NewProfilesServer(&fakeProfileRepo{}, isOpRef)
+
+	for _, p := range []*profilesv1.Profile{
+		{Name: "bad name"},
+		{Name: "dev", Description: "a\nb"},
+		{Name: "dev", Vars: []*profilesv1.ProfileVar{{Name: "1BAD"}}},
+		{Name: "dev", Vars: []*profilesv1.ProfileVar{{Name: "A"}, {Name: "A"}}},
+	} {
+		_, err := srv.ImportProfile(context.Background(), &profilesv1.ImportProfileRequest{Profile: p})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Errorf("profile %v: code = %v, want InvalidArgument", p, status.Code(err))
 		}
 	}
 }

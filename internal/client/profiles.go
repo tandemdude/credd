@@ -11,18 +11,25 @@ import (
 )
 
 // CreateProfile creates a new, empty profile.
-func (c *Client) CreateProfile(ctx context.Context, name string) error {
-	_, err := c.profiles.CreateProfile(ctx, &profilesv1.CreateProfileRequest{Name: name})
+func (c *Client) CreateProfile(ctx context.Context, name, description string) error {
+	_, err := c.profiles.CreateProfile(ctx, &profilesv1.CreateProfileRequest{Name: name, Description: description})
 	return err
 }
 
-// ListProfiles returns the names of all profiles.
-func (c *Client) ListProfiles(ctx context.Context) ([]string, error) {
+// ListProfiles returns the name and description of every profile, sorted by name.
+func (c *Client) ListProfiles(ctx context.Context) ([]*profilesv1.ProfileSummary, error) {
 	resp, err := c.profiles.ListProfiles(ctx, &profilesv1.ListProfilesRequest{})
 	if err != nil {
 		return nil, err
 	}
-	return resp.GetNames(), nil
+	return resp.GetProfiles(), nil
+}
+
+// SetProfileDescription replaces a profile's description; an empty
+// description clears it.
+func (c *Client) SetProfileDescription(ctx context.Context, name, description string) error {
+	_, err := c.profiles.SetProfileDescription(ctx, &profilesv1.SetProfileDescriptionRequest{Name: name, Description: description})
+	return err
 }
 
 // GetProfile returns a profile and its vars, sorted by name.
